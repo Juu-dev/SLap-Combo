@@ -4,8 +4,51 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <pthread.h>
 
-int server_socket, client_socket;
+#include "user_db.h"
+
+#define MAX_CLIENTS 10
+
+int server_socket;
+int client_sockets[MAX_CLIENTS];
+pthread_t client_threads[MAX_CLIENTS];
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void* client_handler(void* client_socket_ptr) {
+    int client_socket = *((int*)client_socket_ptr);
+    free(client_socket_ptr);
+
+    char received_data[1024];
+    int bytes_received = recv(client_socket, received_data, sizeof(received_data), 0);
+
+    if (bytes_received <= 0) {
+        close(client_socket);
+        pthread_exit(NULL);
+    }
+
+    received_data[bytes_received] = '\0';
+    printf("Received data from client: %s\n", received_data);
+
+    // Phân tích thông tin đăng nhập (ví dụ: tách tên người dùng và mật khẩu)
+    char username[256];
+    char password[256];
+    if (sscanf(received_data, "%255s %255s", username, password) == 2) {
+        // Thực hiện đăng nhập
+        if (login_user(username, password) == 0) {
+            printf("Đăng nhập thành công!\n");
+            const char* response = "Login successful"; 
+            send(client_socket, response, strlen(response), 0); 
+        } else {
+            printf("Đăng nhập thất bại!\n");
+            const char* response = "Login failed"; 
+            send(client_socket, response, strlen(response), 0); 
+        }
+    }
+
+    close(client_socket);
+    pthread_exit(NULL);
+}
 
 int start_server(int port) {
     // Khởi tạo socket
@@ -14,7 +57,7 @@ int start_server(int port) {
         perror("Lỗi khởi tạo socket");
         return -1;
     }
-
+    
     // Cấu hình địa chỉ máy chủ
     struct sockaddr_in server_address;
     server_address.sin_family = AF_INET;
@@ -28,73 +71,57 @@ int start_server(int port) {
     }
 
     // Lắng nghe kết nối từ client
-    if (listen(server_socket, 5) < 0) {
+    if (listen(server_socket, 10) < 0) { 
         perror("Lỗi lắng nghe kết nối");
         return -1;
     }
 
-    return 0;
-}
-
-int accept_connection() {
-    // Chấp nhận kết nối từ client
-    client_socket = accept(server_socket, NULL, NULL);
-    if (client_socket < 0) {
-        perror("Lỗi chấp nhận kết nối");
-        return -1;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        client_sockets[i] = -1;
     }
-    return 0;
-}
 
-int send_data(const char* data, int data_length) {
-    int bytes_sent = send(client_socket, data, data_length, 0);
-    if (bytes_sent < 0) {
-        perror("Lỗi gửi dữ liệu");
-        return -1;
+    while (1) {
+        int client_socket = accept(server_socket, NULL, NULL);
+        if (client_socket < 0) {
+            perror("Error accepting connection");
+            continue;
+        }
+
+        int i;
+        pthread_t thread;
+
+        pthread_mutex_lock(&mutex);
+        for (i = 0; i < MAX_CLIENTS && client_sockets[i] != -1; i++) {
+        }
+        if (i < MAX_CLIENTS) {
+            client_sockets[i] = client_socket;
+            int* client_socket_ptr = malloc(sizeof(int));
+            *client_socket_ptr = client_socket;
+            if (pthread_create(&thread, NULL, client_handler, client_socket_ptr) != 0) {
+                perror("Error creating thread");
+            } else {
+                client_threads[i] = thread;
+            }
+        } else {
+            close(client_socket);
+        }
+        pthread_mutex_unlock(&mutex);
     }
-    return bytes_sent;
-}
 
-int receive_data(char* buffer, int buffer_size) {
-    int bytes_received = recv(client_socket, buffer, buffer_size, 0);
-    if (bytes_received < 0) {
-        perror("Lỗi nhận dữ liệu");
-        return -1;
-    }
-    return bytes_received;
-}
-
-void close_connection() {
-    close(client_socket);
     close(server_socket);
+    return 0;
 }
 
 int main() {
-    // Khởi tạo máy chủ
     if (start_server(12345) < 0) {
         return 1;
     }
 
-    printf("Đang chờ kết nối từ client...\n");
+    printf("Waiting for connections...\n");
 
-    // Chấp nhận kết nối từ client
-    if (accept_connection() < 0) {
-        return 1;
+    while (1) {
+        // Keep the server running
     }
-
-    // Gửi và nhận dữ liệu với client ở đây
-    char data_to_send[] = "Hello, client!";
-    send_data(data_to_send, strlen(data_to_send));
-
-    char received_data[1024];
-    int bytes_received = receive_data(received_data, sizeof(received_data));
-    if (bytes_received > 0) {
-        received_data[bytes_received] = '\0'; // Đảm bảo chuỗi kết thúc bằng null
-        printf("Dữ liệu nhận được từ client: %s\n", received_data);
-    }
-
-    // Đóng kết nối
-    close_connection();
 
     return 0;
 }

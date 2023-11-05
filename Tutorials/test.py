@@ -2,6 +2,8 @@ import pygame
 from sys import exit
 
 link_shinobi = "../shinobi-sprites-pixel-art/Shinobi/Attack_1.png"
+# link_stask = 1 -> 5
+link_slash = "../slash-sprite-cartoon-effects/PNG/2/"
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, image_list, pos_x, pos_y):
@@ -41,6 +43,35 @@ class SpriteSheet():
             
         return frames
     
+class ListImageSlash():
+    def __init__(self, link, n):
+        self.list_image = []
+        for i in range(n):
+            self.list_image.append(pygame.image.load(link + str(i+1) + ".png").convert_alpha())
+    
+class Slash(pygame.sprite.Sprite):
+    def __init__(self, image_list, pos_x, pos_y):
+        super().__init__()
+        self.attack_animation = False
+        self.sprites = image_list
+        
+        self.current_sprite = 0
+        self.image = self.sprites[self.current_sprite]
+        
+        self.rect = self.image.get_rect()
+        self.rect.topleft = [pos_x, pos_y]
+        
+    def attack(self):
+        self.attack_animation = True
+        
+    def update(self, speed):
+        if self.attack_animation == True:
+            self.current_sprite += speed
+            if int(self.current_sprite) >= len(self.sprites):
+                self.current_sprite = 0
+                self.attack_animation = False
+                
+        self.image = self.sprites[int(self.current_sprite)]
 
 # General setup
 pygame.init()
@@ -49,8 +80,10 @@ clock = pygame.time.Clock()
 # Potision
 screen_width = 1080
 screen_height = 600
-floor_width = 200
-floor_height = 400
+floor_player_width = 200
+floor_player_height = 400
+floor_slash_width = 300
+floor_slash_height = 400
 
 # Game Screen
 screen = pygame.display.set_mode((screen_width, screen_height))
@@ -65,9 +98,15 @@ sprite_sheet = SpriteSheet(link_shinobi)
 shinobi_frames = sprite_sheet.split_image(5)
 
 # Creating the sprites and groups
-moving_sprites = pygame.sprite.Group()
-player = Player(shinobi_frames, floor_width, floor_height)  # Pass the list of frames
-moving_sprites.add(player)
+moving_player_sprites = pygame.sprite.Group()
+player = Player(shinobi_frames, floor_player_width, floor_player_height)  # Pass the list of frames
+moving_player_sprites.add(player)
+
+moving_slash_sprites = pygame.sprite.Group()
+list_slash = ListImageSlash(link_slash, 5)
+slash = Slash(list_slash.list_image, floor_slash_width, floor_slash_height)
+moving_slash_sprites.add(slash)
+
 
 while True:
     for event in pygame.event.get():
@@ -84,8 +123,11 @@ while True:
     screen.blit(text_surface, (500, 100))
 
     # draw the sprites
-    moving_sprites.draw(screen)
-    moving_sprites.update(0.25)
+    moving_player_sprites.draw(screen)
+    moving_player_sprites.update(0.25)
+    
+    moving_slash_sprites.draw(screen)
+    moving_slash_sprites.update(0.25)
 
     pygame.display.update()
     clock.tick(60)
