@@ -6,7 +6,7 @@ link_shinobi = "../shinobi-sprites-pixel-art/Shinobi/Attack_1.png"
 link_slash = "../slash-sprite-cartoon-effects/PNG/2/"
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, image_list, pos_x, pos_y):
+    def __init__(self, image_list, player_start_x, player_start_y):
         super().__init__()
         self.attack_animation = False
         self.sprites = image_list
@@ -15,7 +15,7 @@ class Player(pygame.sprite.Sprite):
         self.image = self.sprites[self.current_sprite]
         
         self.rect = self.image.get_rect()
-        self.rect.topleft = [pos_x, pos_y]
+        self.rect.topleft = [player_start_x, player_start_y]
         
     def attack(self):
         self.attack_animation = True
@@ -47,10 +47,11 @@ class ListImageSlash():
     def __init__(self, link, n):
         self.list_image = []
         for i in range(n):
-            self.list_image.append(pygame.image.load(link + str(i+1) + ".png").convert_alpha())
+            image = pygame.image.load(link + str(i+1) + ".png").convert_alpha()
+            self.list_image.append(pygame.transform.scale(image, (300, 400)))
     
 class Slash(pygame.sprite.Sprite):
-    def __init__(self, image_list, pos_x, pos_y):
+    def __init__(self, image_list, slash_start_x, slash_start_y):
         super().__init__()
         self.attack_animation = False
         self.sprites = image_list
@@ -58,8 +59,9 @@ class Slash(pygame.sprite.Sprite):
         self.current_sprite = 0
         self.image = self.sprites[self.current_sprite]
         
+        # fit the image to the screen
         self.rect = self.image.get_rect()
-        self.rect.topleft = [pos_x, pos_y]
+        self.rect.topleft = [slash_start_x, slash_start_y]
         
     def attack(self):
         self.attack_animation = True
@@ -73,6 +75,9 @@ class Slash(pygame.sprite.Sprite):
                 
         self.image = self.sprites[int(self.current_sprite)]
 
+# name == main => run the code
+# if __name__ == "__main__":
+
 # General setup
 pygame.init()
 clock = pygame.time.Clock()
@@ -83,7 +88,7 @@ screen_height = 600
 floor_player_width = 200
 floor_player_height = 400
 floor_slash_width = 300
-floor_slash_height = 400
+floor_slash_height = 250
 
 # Game Screen
 screen = pygame.display.set_mode((screen_width, screen_height))
@@ -115,11 +120,11 @@ while True:
             exit()
         if event.type == pygame.KEYDOWN:
             player.attack()
+            slash.attack()
 
-    # draw our elements
-
+    screen.fill((0, 0, 0))
     # draw background with blit and fit it to the screen
-    screen.blit(pygame.transform.scale(background, (1080, 600)), (0, 0))
+    # screen.blit(pygame.transform.scale(background, (1080, 600)), (0, 0))
     screen.blit(text_surface, (500, 100))
 
     # draw the sprites
