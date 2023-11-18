@@ -53,14 +53,6 @@ slash_img_crop_info = [
     "dimension": [150, 80, 280, 350]
 }]
 
-# class ListImageSlash():
-#     def __init__(self, link, n):
-#         self.list_image = []
-#         for i in range(n):
-#             image = pygame.image.load(link + str(i+1) + ".png").convert_alpha()
-#             self.list_image.append(image)
-            # self.list_image.append(pygame.transform.scale(image, (300, 400)))
-            
 class ListCropedImageSlash():
     def __init__(self, link, n):
         self.list_image = []
