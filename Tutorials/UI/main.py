@@ -1,11 +1,14 @@
 import pygame
 from sys import exit
-from Player_Left import Player_Left
-from Player_Right import Player_Right
+from Player import Player
 from constant import *
+
 
 class Game:
     def __init__(self):
+
+        self.count = 1
+
         pygame.init()
         self.clock = pygame.time.Clock()
 
@@ -22,12 +25,12 @@ class Game:
         self.player_right = pygame.sprite.GroupSingle()
 
         # Initialize left player
-        player_ins = Player_Left(LINK_SHINOBI_LEFT, FLOOR_PLAYER_LEFT_WIDTH, FLOOR_PLAYER_LEFT_HEIGHT, 0.1, LINK_SLASH, SLASH_INDEX, 0.2)
-        self.player_left.add(player_ins)
+        self.player_left_ins = Player(LINK_SHINOBI_LEFT, FLOOR_PLAYER_LEFT_WIDTH, FLOOR_PLAYER_LEFT_HEIGHT, 0.1, LINK_SLASH, SLASH_INDEX, 0.2, 'left')
+        self.player_left.add(self.player_left_ins)
 
         # Initialize right player
-        player_right_ins = Player_Right(LINK_SHINOBI_LEFT, FLOOR_PLAYER_RIGHT_WIDTH, FLOOR_PLAYER_RIGHT_HEIGHT, 0.1, LINK_SLASH, SLASH_INDEX, 0.2)
-        self.player_right.add(player_right_ins)
+        self.player_right_ins = Player(LINK_SHINOBI_LEFT, FLOOR_PLAYER_RIGHT_WIDTH, FLOOR_PLAYER_RIGHT_HEIGHT, 0.1, LINK_SLASH, SLASH_INDEX, 0.2, 'right')
+        self.player_right.add(self.player_right_ins)
     
     def handle_events(self):
         for event in pygame.event.get():
@@ -36,14 +39,23 @@ class Game:
                 exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key in KEY_ACTION_LEFT_MAPPING:
-                    self.player_left.sprite.change_animation(KEY_ACTION_LEFT_MAPPING[event.key])
+                    self.player_left_ins.change_animation(KEY_ACTION_LEFT_MAPPING[event.key])
             if event.type == pygame.KEYDOWN:
                 if event.key in KEY_ACTION_RIGHT_MAPPING:
-                    self.player_right.sprite.change_animation(KEY_ACTION_RIGHT_MAPPING[event.key])
+                    self.player_right_ins.change_animation(KEY_ACTION_RIGHT_MAPPING[event.key])
 
     def update(self):
-        self.player_left.sprite.update()
-        self.player_right.sprite.update()
+        self.player_left_ins.update()
+        self.player_right_ins.update()
+
+    def draw_line_slash(self, player, direction):
+        slash = player.slash.sprite
+        if direction == 'right':
+            rect = slash.image.get_rect(topright = [slash.slash_start_x, slash.slash_start_y])
+        else:
+            rect = slash.image.get_rect(topleft = [slash.slash_start_x, slash.slash_start_y])
+        border_color = (255, 0, 0)
+        pygame.draw.rect(self.screen, border_color, rect, 2)
 
     def draw(self):
         self.screen.fill((0, 0, 0))
@@ -53,28 +65,39 @@ class Game:
         # Draw player right
         self.player_right.draw(self.screen)
         # Check if the player_left has a slash before trying to draw it
-        if self.player_left.sprite.slash:
-            self.player_left.sprite.slash.draw(self.screen)
-        if self.player_right.sprite.slash:
-            self.player_right.sprite.slash.draw(self.screen)
+        if self.player_left_ins.slash:
+            self.player_left_ins.slash.draw(self.screen)
+            # self.draw_line_slash(self.player_left_ins, 'left')
+        if self.player_right_ins.slash:
+            self.player_right_ins.slash.draw(self.screen)
+            # self.draw_line_slash(self.player_right_ins, 'right')
 
         pygame.display.flip()
         self.clock.tick(FPS)
 
     def check_collision(self):
-        if self.player_left.sprite.slash:
-            slash_hitbox = self.player_left.sprite.slash.sprite.rect
-            if self.player_right.sprite.hitbox.colliderect(slash_hitbox):
-                print("Collision")
-                # self.player_right.sprite.change_animation('Hurt')
-                # self.player_right.sprite.create_slash()
+        if self.player_left_ins.slash:
+            slash_hitbox = self.player_left_ins.slash.sprite.rect
+            if self.player_right_ins.hitbox.colliderect(slash_hitbox):
+                # print("check collision", self.count)
+                # self.count = self.count + 1
+                # print("Collision")
+                self.player_right_ins.change_animation('Hurt')
+                # self.player_right_ins.create_slash()
+        if self.player_right_ins.slash:
+            slash_hitbox = self.player_right_ins.slash.sprite.rect
+            if self.player_left_ins.hitbox.colliderect(slash_hitbox):
+                # print("check collision", self.count)
+                # self.count = self.count + 1
+                # print("Collision")
+                self.player_left_ins.change_animation('Hurt')
 
     def run(self):
-        while True:
-            self.handle_events()
-            self.update()
-            self.check_collision()
-            self.draw()
+            while True:
+                self.handle_events()
+                self.update()
+                self.check_collision()
+                self.draw()
 
 if __name__ == "__main__":
     game = Game()

@@ -46,10 +46,10 @@ class Player_Right(pygame.sprite.Sprite):
             self.frame_index = 0
 
     def create_slash(self):
-        x_pos = self.rect.x - 450
+        x_pos = self.rect.x - 140
         y_pos = self.rect.y + 20
-        slash_ins = Slash(ANIMATION_SLASH_SPEED, self.link_slash, self.n, x_pos, y_pos, 'right')
-        self.slash.add(slash_ins)
+        self.slash_ins = Slash(ANIMATION_SLASH_SPEED, self.link_slash, self.n, x_pos, y_pos, 'right')
+        self.slash.add(self.slash_ins)
 
     def update(self):
         now = pygame.time.get_ticks()
@@ -64,9 +64,9 @@ class Player_Right(pygame.sprite.Sprite):
                 self.last_update = now
         if self.current_animation == 'Attack_1' and self.frame_index == 3:
             self.create_slash()
-            self.slash.sprite.attack()
+            self.slash_ins.attack()
         if self.slash:
             # if current sprite is last sprite, kill slash
-            self.slash.sprite.update()
-            if self.slash.sprite.current_sprite == 0:
-                self.slash.sprite.kill()
+            self.slash_ins.update()
+            if self.slash_ins.current_sprite == 0:
+                self.slash_ins.kill()

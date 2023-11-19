@@ -12,14 +12,14 @@ KEY_ACTION_LEFT_MAPPING = {
 }
 
 KEY_ACTION_RIGHT_MAPPING = {
-    pygame.K_l: 'Attack_1',
-    # pygame.K_d: 'Dead',
-    # pygame.K_h: 'Hurt',
-    pygame.K_p: 'Idle',
-    # pygame.K_r: 'Run',
-    # pygame.K_j: 'Jump',
-    # pygame.K_s: 'Shield',
-    # pygame.K_w: 'Walk'
+    pygame.K_1: 'Attack_1',
+    pygame.K_2: 'Dead',
+    pygame.K_3: 'Hurt',
+    pygame.K_4: 'Idle',
+    pygame.K_5: 'Run',
+    pygame.K_6: 'Jump',
+    pygame.K_7: 'Shield',
+    pygame.K_8: 'Walk'
 }
 
 # LINK IMG
@@ -33,10 +33,10 @@ SCREEN_WIDTH = 1080
 SCREEN_HEIGHT = 600
 
 # Potision
-FLOOR_PLAYER_LEFT_WIDTH = 150
+FLOOR_PLAYER_LEFT_WIDTH = 300
 FLOOR_PLAYER_LEFT_HEIGHT = 200
 
-FLOOR_PLAYER_RIGHT_WIDTH = 650
+FLOOR_PLAYER_RIGHT_WIDTH = 750
 FLOOR_PLAYER_RIGHT_HEIGHT = 200
 
 # FPS
@@ -52,7 +52,12 @@ SLASH_IMG_CROP_INFO = [
 {
     "folder": "2",
     "n": 5,
-    "dimension": [0, 210, 510, 100]
+    "dimension": [[0, 210, 180, 100],
+                  [20, 210, 250, 100],
+                  [0, 210, 350, 100],
+                  [0, 210, 400, 100],
+                  [0, 210, 510, 100],
+                  ]
 },
 {
     "folder": "3",
