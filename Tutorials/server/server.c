@@ -6,8 +6,6 @@
 #include <sys/socket.h>
 #include <pthread.h>
 
-#include "user_db.h"
-
 #define MAX_CLIENTS 10
 
 int server_socket;

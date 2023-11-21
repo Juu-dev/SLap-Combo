@@ -28,37 +28,94 @@ int connect_to_server(const char* server_ip, int server_port) {
         return -1;
     }
 
-    // Gửi và nhận dữ liệu với máy chủ ở đây
-    char data_to_send[] = "Hello, server!";
-    int bytes_sent = send(client_socket, data_to_send, strlen(data_to_send), 0);
-    if (bytes_sent < 0) {
-        perror("Lỗi gửi dữ liệu");
-        close(client_socket); // Đóng socket nếu gửi dữ liệu thất bại
+    return client_socket;
+}
+
+int login(int client_socket) {
+    // Gửi yêu cầu đăng nhập tới máy chủ
+    char request[256] = "LOGIN";
+    if (send(client_socket, request, strlen(request), 0) < 0) {
+        perror("Lỗi gửi yêu cầu đăng nhập");
         return -1;
     }
 
-    char received_data[1024];
-    int bytes_received = recv(client_socket, received_data, sizeof(received_data), 0);
-    if (bytes_received < 0) {
-        perror("Lỗi nhận dữ liệu");
-        close(client_socket); // Đóng socket nếu nhận dữ liệu thất bại
+    // Nhận phản hồi từ máy chủ
+    char response[256];
+    if (recv(client_socket, response, sizeof(response), 0) < 0) {
+        perror("Lỗi nhận phản hồi từ máy chủ");
         return -1;
     }
 
-    received_data[bytes_received] = '\0'; // Đảm bảo chuỗi kết thúc bằng null
-    printf("Dữ liệu nhận được từ máy chủ: %s\n", received_data);
+    // Xử lý phản hồi từ máy chủ
+    if (strcmp(response, "LOGIN_SUCCESS") == 0) {
+        printf("Đăng nhập thành công\n");
+        return 0;
+    } else if (strcmp(response, "LOGIN_FAILURE") == 0) {
+        printf("Đăng nhập thất bại\n");
+        return -1;
+    } else {
+        printf("Phản hồi không hợp lệ từ máy chủ\n");
+        return -1;
+    }
+}
 
-    // Đóng kết nối
-    close(client_socket);
+int register_user(int client_socket) {
+    // Gửi yêu cầu đăng ký tới máy chủ
+    char request[256] = "REGISTER";
+    if (send(client_socket, request, strlen(request), 0) < 0) {
+        perror("Lỗi gửi yêu cầu đăng ký");
+        return -1;
+    }
 
-    return 0;
+    // Nhận phản hồi từ máy chủ
+    char response[256];
+    if (recv(client_socket, response, sizeof(response), 0) < 0) {
+        perror("Lỗi nhận phản hồi từ máy chủ");
+        return -1;
+    }
+
+    // Xử lý phản hồi từ máy chủ
+    if (strcmp(response, "REGISTER_SUCCESS") == 0) {
+        printf("Đăng ký thành công\n");
+        return 0;
+    } else if (strcmp(response, "REGISTER_FAILURE") == 0) {
+        printf("Đăng ký thất bại\n");
+        return -1;
+    } else {
+        printf("Phản hồi không hợp lệ từ máy chủ\n");
+        return -1;
+    }
 }
 
 int main() {
     // Thực hiện kết nối tới máy chủ
-    if (connect_to_server("127.0.0.1", 12345) < 0) {
+    int client_socket = connect_to_server("127.0.0.1", 12345);
+    if (client_socket < 0) {
         return 1;
     }
+
+    // Đăng nhập hoặc đăng ký
+    int choice;
+    printf("1. Đăng nhập\n");
+    printf("2. Đăng ký\n");
+    printf("Nhập lựa chọn: ");
+    scanf("%d", &choice);
+
+    if (choice == 1) {
+        if (login(client_socket) < 0) {
+            return 1;
+        }
+    } else if (choice == 2) {
+        if (register_user(client_socket) < 0) {
+            return 1;
+        }
+    } else {
+        printf("Lựa chọn không hợp lệ\n");
+        return 1;
+    }
+
+    // Đóng kết nối
+    close(client_socket);
 
     return 0;
 }
