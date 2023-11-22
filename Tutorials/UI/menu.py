@@ -2,6 +2,24 @@ import pygame
 import pygame_gui
 import sys
 
+import ctypes
+
+# Load the shared library
+libclient = ctypes.CDLL('./libclient.so')
+
+# Function Prototypes
+libclient.connect_to_server.argtypes = [ctypes.c_char_p, ctypes.c_int]
+libclient.connect_to_server.restype = ctypes.c_int
+libclient.login.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p]
+libclient.login.restype = ctypes.c_int
+libclient.register_user.argtypes = [ctypes.c_int,  ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
+libclient.register_user.restype = ctypes.c_int
+libclient.close_socket.argtypes = [ctypes.c_int]
+libclient.close_socket.restype = None
+
+IP_SERVER = "127.0.0.1"
+PORT_SERVER = 5000
+
 FAKE_PLAYERS = [
     {"username": "Player1", "health": 100, "level": 5},
     {"username": "Player2", "health": 90, "level": 4},
@@ -12,6 +30,31 @@ FAKE_PLAYERS = [
     {"username": "Player7", "health": 110, "level": 6},
     # Add more fake players as needed
 ]
+
+class Socket:
+    def __init__(self):
+        ip_server = ctypes.c_char_p(b"127.0.0.1")
+        port_server = ctypes.c_int(PORT_SERVER)
+        self.client_socket = libclient.connect_to_server(ip_server, port_server)
+        if self.client_socket < 0:
+            print("Failed to connect")
+        else:
+            print("Successfully connect to server.")
+
+    def login(self, username, password):
+        login_success = libclient.login(self.client_socket, username.encode('utf-8'), password.encode('utf-8'))
+        # login_success = 0 => success
+        print(f"login_success: {login_success}")
+        return login_success
+
+    def register(self, username, password, confirm_password):
+        register_success = libclient.register_user(self.client_socket, username.encode('utf-8'), password.encode('utf-8'), confirm_password.encode('utf-8'))
+        # register_success = 0 => success
+        print(f"register_success: {register_success}")
+        return register_success
+
+    def close(self):
+        libclient.close_socket(self.client_socket)
 
 class LevelsPage:
     def __init__(self, width, height, manager, on_back):
@@ -144,11 +187,12 @@ class PlayersPage:
                 # Check which player button was pressed
 
 class HomePage:
-    def __init__(self, width, height, manager, on_levels, on_players):
+    def __init__(self, width, height, manager, on_levels, on_players, on_logout):
         self.width, self.height = width, height
         self.manager = manager
         self.on_levels = on_levels
         self.on_players = on_players
+        self.on_logout = on_logout
 
         self.create_home_page()
 
@@ -170,6 +214,12 @@ class HomePage:
         self.start_with_player = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(20, 100, 200, 40),
             text='Start with Player',
+            manager=self.manager
+        )
+
+        self.logout = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(20, 150, 200, 40),
+            text='Logout',
             manager=self.manager
         )
 
@@ -199,12 +249,21 @@ class HomePage:
                     print("Start with Player button pressed")
                     self.on_players()
 
+                elif event.ui_element == self.logout:
+                    # Transition to MenuGame
+                    print("Logout button pressed")
+                    self.on_logout()
+
+
 class LoginPage:
-    def __init__(self, width, height, manager, on_login_success):
+    def __init__(self, width, height, manager, on_cancel_login, on_login_success, socket):
         pygame.display.set_caption('Login Page')
         self.width, self.height = width, height
         self.manager = manager
         self.on_login_success = on_login_success
+        self.on_cancel_login = on_cancel_login
+
+        self.socket = socket
 
         self.create_login_form()
 
@@ -237,16 +296,16 @@ class LoginPage:
         username = self.username_input.get_text()
         password = self.password_input.get_text()
         print(f"Submitting login with username: {username}, password: {password}")
-        is_login_successful = True  # Replace with actual login verification logic
-        if is_login_successful:
+        is_login_successful = self.socket.login(username, password)
+        
+        if is_login_successful == 0:
             print(f"Login successful for username: {username}")
             self.on_login_success()
         else:
             print("Login failed")
 
-    def cancel_action(self, menu_game):
-        self.manager.clear_and_reset()
-        menu_game.create_menu_buttons()
+    def cancel_action(self):
+        self.on_cancel_login()
 
     def handle_event_focus(self, event):
         if event.type == pygame.KEYDOWN:
@@ -255,24 +314,27 @@ class LoginPage:
                     self.username_input.unfocus()
                     self.password_input.focus()
 
-    def handle_event_button(self, event, menu_game):
+    def handle_event_button(self, event):
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                 if event.ui_element == self.submit_button:
                     self.submit_action()
                 elif event.ui_element == self.cancel_button:
-                    self.cancel_action(menu_game)
+                    self.cancel_action()
 
 
-    def handle_events(self, event, menu_game):
+    def handle_events(self, event):
         self.handle_event_focus(event)
-        self.handle_event_button(event, menu_game)
+        self.handle_event_button(event)
         
 class RegisterPage:
-    def __init__(self, width, height, manager):
+    def __init__(self, width, height, manager, on_cancel_register, on_register_success, socket):
         pygame.display.set_caption('Register Page')
         self.width, self.height = width, height
         self.manager = manager
+        self.socket = socket
+        self.on_register_success = on_register_success
+        self.on_cancel_register = on_cancel_register
 
         self.create_register_form()
 
@@ -311,10 +373,16 @@ class RegisterPage:
         password = self.password_input.get_text()
         confirm_password = self.confirm_password_input.get_text()
         print(f"Submitting register with username: {username}, password: {password}, confirm_password: {confirm_password}")
+        is_register_successful = self.socket.register(username, password, confirm_password)
+        
+        if is_register_successful == 0:
+            print(f"Register successful for username: {username}")
+            self.on_register_success()
+        else:
+            print("Register failed")
 
-    def cancel_action(self, menu_game):
-        self.manager.clear_and_reset()
-        menu_game.create_menu_buttons()
+    def cancel_action(self):
+        self.on_cancel_register()
 
     def handle_event_focus(self, event):
         if event.type == pygame.KEYDOWN:
@@ -326,17 +394,17 @@ class RegisterPage:
                     self.password_input.unfocus()
                     self.confirm_password_input.focus()
 
-    def handle_event_button(self, event, menu_game):
+    def handle_event_button(self, event):
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                 if event.ui_element == self.submit_button:
                     self.submit_action()
                 elif event.ui_element == self.cancel_button:
-                    self.cancel_action(menu_game)
+                    self.cancel_action()
 
-    def handle_events(self, event, menu_game):
+    def handle_events(self, event):
         self.handle_event_focus(event)
-        self.handle_event_button(event, menu_game)
+        self.handle_event_button(event)
 
 class MenuGame:
     def __init__(self, manager):
@@ -407,6 +475,9 @@ class Game:
     def __init__(self):
         pygame.init()
 
+        print("Initializing socket")
+        self.socket = Socket()
+
         self.width, self.height = 800, 600
         # screen is the surface representing the window
         self.screen = pygame.display.set_mode((self.width, self.height))
@@ -431,10 +502,14 @@ class Game:
     def before_change_page(self):
         self.manager.clear_and_reset()
         self.reset_page()
+
+    def show_menu_game(self):
+        self.before_change_page()
+        self.menu_game = MenuGame(self.manager)
     
     def show_home_page(self):
         self.before_change_page()
-        self.home_page = HomePage(self.width, self.height, self.manager, self.show_levels_page, self.show_players_page)
+        self.home_page = HomePage(self.width, self.height, self.manager, self.show_levels_page, self.show_players_page, self.show_menu_game)
 
     def show_levels_page(self):
         self.before_change_page()
@@ -446,11 +521,11 @@ class Game:
 
     def show_register_page(self):
         self.before_change_page()
-        self.register_page = RegisterPage(self.width, self.height, self.manager)
+        self.register_page = RegisterPage(self.width, self.height, self.manager, self.show_menu_game, self.show_login_page, self.socket)
     
     def show_login_page(self):
         self.before_change_page()
-        self.login_page = LoginPage(self.width, self.height, self.manager, self.show_home_page)
+        self.login_page = LoginPage(self.width, self.height, self.manager, self.show_menu_game, self.show_home_page, self.socket)
 
     def run(self):
         clock = pygame.time.Clock()
@@ -466,9 +541,9 @@ class Game:
                 if (self.menu_game):
                     self.menu_game.handle_events(event)
                 elif (self.login_page):
-                    self.login_page.handle_events(event, self.menu_game)
+                    self.login_page.handle_events(event)
                 elif (self.register_page):
-                    self.register_page.handle_events(event, self.menu_game)
+                    self.register_page.handle_events(event)
                 elif (self.home_page):
                     self.home_page.handle_events(event)
                 elif (self.levels_page):
@@ -503,3 +578,4 @@ class Game:
 if __name__ == "__main__":
     game = Game()
     game.run()
+    game.socket.close()

@@ -1,2 +1,2 @@
 #!/bin/sh
-gcc server_copilot.c -o server_copilot -lpthread
+gcc server_copilot.c -o server_copilot -lpthread -lsqlite3

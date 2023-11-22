@@ -31,7 +31,7 @@ int connect_to_server(const char* server_ip, int server_port) {
     return client_socket;
 }
 
-int login(int client_socket) {
+int login(int client_socket, char username_par[], char password_par[]) {
     // Gửi yêu cầu đăng nhập tới máy chủ
     char request[256] = "LOGIN";
     if (send(client_socket, request, sizeof(request), 0) < 0) {
@@ -54,10 +54,14 @@ int login(int client_socket) {
     // Nhập tên đăng nhập và mật khẩu
     char username[256];
     char password[256];
-    printf("Tên đăng nhập: ");
-    scanf("%s", username);
-    printf("Mật khẩu: ");
-    scanf("%s", password);
+    
+    strcpy(username, username_par);
+    strcpy(password, password_par);
+
+    // printf("Tên đăng nhập: ");
+    // scanf("%s", username);
+    // printf("Mật khẩu: ");
+    // scanf("%s", password);
 
     // Gửi tên đăng nhập và mật khẩu tới máy chủ
     if (send(client_socket, username, sizeof(username), 0) < 0) {
@@ -88,7 +92,7 @@ int login(int client_socket) {
     }
 }
 
-int register_user(int client_socket) {
+int register_user(int client_socket, char username_par[], char password_par[], char confirm_password_par[]) {
     // Gửi yêu cầu đăng ký tới máy chủ
     char request[256] = "REGISTER";
     if (send(client_socket, request, strlen(request), 0) < 0) {
@@ -112,12 +116,17 @@ int register_user(int client_socket) {
     char username[256];
     char password[256];
     char confirm_password[256];
-    printf("Tên đăng nhập: ");
-    scanf("%s", username);
-    printf("Mật khẩu: ");
-    scanf("%s", password);
-    printf("Xác nhận mật khẩu: ");
-    scanf("%s", confirm_password);
+
+    strcpy(username, username_par);
+    strcpy(password, password_par);
+    strcpy(confirm_password, confirm_password_par);
+
+    // printf("Tên đăng nhập: ");
+    // scanf("%s", username);
+    // printf("Mật khẩu: ");
+    // scanf("%s", password);
+    // printf("Xác nhận mật khẩu: ");
+    // scanf("%s", confirm_password);
 
     // Gửi tên đăng nhập, mật khẩu tới máy chủ
     if (send(client_socket, username, sizeof(username), 0) < 0) {
@@ -152,32 +161,7 @@ int register_user(int client_socket) {
     }
 }
 
-int main(int argc, char* argv[]) {
-    // Thực hiện kết nối tới máy chủ
-    int client_socket = connect_to_server("127.0.0.1", argc > 1 ? atoi(argv[1]) : 8000);
-    if (client_socket < 0) {
-        return 1;
-    }
-
-    while (1) {
-        // Đăng nhập hoặc đăng ký
-        int choice;
-        printf("1. Đăng nhập\n");
-        printf("2. Đăng ký\n");
-        printf("Nhập lựa chọn: ");
-        scanf("%d", &choice);
-
-        if (choice == 1) {
-            login(client_socket);
-        } else if (choice == 2) {
-            register_user(client_socket);
-        } else {
-            printf("Lựa chọn không hợp lệ\n");
-        }
-    }
-
-    // Đóng kết nối
+int close_socket(int client_socket) {
     close(client_socket);
-
     return 0;
 }
