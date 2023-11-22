@@ -14,9 +14,12 @@ pthread_t client_threads[MAX_CLIENTS];
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void handle_login(int client_socket, char* data) {
+    // send OK to client
+    char start[256] = "OK";
+    send(client_socket, start, sizeof(start), 0);
     // TODO: Implement login logic
     // Example:
-    printf("Handling login: %s\n", data);
+    printf("Handling login.\n");
     // receive data login from client
     char username[256];
     char password[256];
@@ -28,11 +31,14 @@ void handle_login(int client_socket, char* data) {
     printf("Password: %s\n", password);
 
     // Send response to client
-    char response[] = "Login successful";
-    send(client_socket, response, strlen(response), 0);
+    char response[] = "LOGIN_SUCCESS";
+    send(client_socket, response, sizeof(response), 0);
 }
 
 void handle_register(int client_socket, char* data) {
+    // send OK to client
+    char start[256] = "OK";
+    send(client_socket, start, sizeof(start), 0);
     // TODO: Implement register logic
     // Example:
     printf("Handling register: %s\n", data);
@@ -50,12 +56,13 @@ void handle_register(int client_socket, char* data) {
     printf("Confirm password: %s\n", confirm_password);
 
     // Send response to client
-    char response[] = "Registration successful";
-    send(client_socket, response, strlen(response), 0);
+    char response[] = "REGISTER_SUCCESS";
+    send(client_socket, response, sizeof(response), 0);
 }
 
 void* client_handler(void* client_socket_ptr) {
     int client_socket = *(int*)client_socket_ptr;
+
     char buffer[256];
     while (1) {
         memset(buffer, 0, sizeof(buffer));
@@ -79,6 +86,7 @@ void* client_handler(void* client_socket_ptr) {
             send(client_socket, response, strlen(response), 0);
         }
     }
+
     close(client_socket);
     pthread_exit(NULL);
 }
@@ -112,6 +120,7 @@ int start_server(int port) {
     // Accept and handle client connections
     int client_count = 0;
     while (1) {
+        printf("Waiting for incoming connections...\n");
         // Accept client connection
         struct sockaddr_in client_address;
         socklen_t client_address_length = sizeof(client_address);
@@ -152,8 +161,8 @@ int start_server(int port) {
     return 0;
 }
 
-int main() {
-    int port = 12345;
+int main(int argc, char* argv[]) {
+    int port = argc > 1 ? atoi(argv[1]) : 8080;
     start_server(port);
     return 0;
 }
