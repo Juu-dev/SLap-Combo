@@ -3,8 +3,7 @@ from sys import exit
 from Player import Player
 from constant import *
 
-
-class Game:
+class Game_Play:
     def __init__(self):
 
         self.count = 1
@@ -93,12 +92,12 @@ class Game:
                 self.player_left_ins.change_animation('Hurt')
 
     def run(self):
-            while True:
-                self.handle_events()
-                self.update()
-                self.check_collision()
-                self.draw()
+        while True:
+            self.handle_events()
+            self.update()
+            self.check_collision()
+            self.draw()
 
 if __name__ == "__main__":
-    game = Game()
+    game = Game_Play()
     game.run()

@@ -4,6 +4,8 @@ import sys
 
 import ctypes
 
+import Game_Play
+
 # Load the shared library
 libclient = ctypes.CDLL('./libclient.so')
 
@@ -31,6 +33,11 @@ FAKE_PLAYERS = [
     # Add more fake players as needed
 ]
 
+class PlayerMachine:
+    def __init__(self):
+        self.Game_Play = Game_Play()
+        self.Game_Play.run()
+
 class Socket:
     def __init__(self):
         ip_server = ctypes.c_char_p(b"127.0.0.1")
@@ -56,11 +63,12 @@ class Socket:
     def close(self):
         libclient.close_socket(self.client_socket)
 
-class LevelsPage:
-    def __init__(self, width, height, manager, on_back):
+class MachineLevelsPage:
+    def __init__(self, width, height, manager, on_back, on_game_play):
         self.width, self.height = width, height
         self.manager = manager
         self.on_back = on_back
+        self.on_game_play = on_game_play
 
         self.create_levels()
 
@@ -79,7 +87,7 @@ class LevelsPage:
         levels_per_line = 2
 
         for level in range(1, 11):
-            level_button = pygame_gui.elements.UIButton(
+            self.level_button = pygame_gui.elements.UIButton(
                 relative_rect=pygame.Rect(level_x, level_y, level_width, level_height),
                 text=f'Level {level}',
                 manager=self.manager
@@ -97,9 +105,11 @@ class LevelsPage:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                 if event.ui_element == self.back_button:
                     self.on_back()
-                # Check which level button was pressed
+                if event.ui_element == self.level_button:
+                    print("Level button pressed")
+                    self.on_game_play()
 
-class PlayersPage:
+class PlayersListPage:
     def __init__(self, width, height, manager, on_back):
         self.width, self.height = width, height
         self.manager = manager
@@ -128,63 +138,63 @@ class PlayersPage:
                     self.on_back()
                 # Check which level button was pressed
 
-class PlayersPage:
-    def __init__(self, width, height, manager, on_back):
-        self.width, self.height = width, height
-        self.manager = manager
-        self.on_back = on_back
+# class PlayersListPage:
+#     def __init__(self, width, height, manager, on_back):
+#         self.width, self.height = width, height
+#         self.manager = manager
+#         self.on_back = on_back
 
-        self.create_players_list()
+#         self.create_players_list()
 
-    def create_players_list(self):
-        self.back_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(20, 20, 100, 40),
-            text='Back',
-            manager=self.manager
-        )
+#     def create_players_list(self):
+#         self.back_button = pygame_gui.elements.UIButton(
+#             relative_rect=pygame.Rect(20, 20, 100, 40),
+#             text='Back',
+#             manager=self.manager
+#         )
 
-        # Create a table to display player information
-        # Table setup
-        table_start_x, table_start_y = 100, 100
-        row_height = 50
-        column_widths = [100, 100, 50, 150]  # Widths for username, health, level, challenge button
+#         # Create a table to display player information
+#         # Table setup
+#         table_start_x, table_start_y = 100, 100
+#         row_height = 50
+#         column_widths = [100, 100, 50, 150]  # Widths for username, health, level, challenge button
 
-        for index, player in enumerate(FAKE_PLAYERS):
-            # Positioning for each row
-            row_y = table_start_y + index * row_height
+#         for index, player in enumerate(FAKE_PLAYERS):
+#             # Positioning for each row
+#             row_y = table_start_y + index * row_height
 
-            # Create labels and buttons for each player
-            username_label = pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect(table_start_x, row_y, column_widths[0], row_height),
-                text=player["username"],
-                manager=self.manager
-            )
+#             # Create labels and buttons for each player
+#             username_label = pygame_gui.elements.UILabel(
+#                 relative_rect=pygame.Rect(table_start_x, row_y, column_widths[0], row_height),
+#                 text=player["username"],
+#                 manager=self.manager
+#             )
 
-            health_label = pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect(table_start_x + column_widths[0], row_y, column_widths[1], row_height),
-                text=str(player["health"]),
-                manager=self.manager
-            )
+#             health_label = pygame_gui.elements.UILabel(
+#                 relative_rect=pygame.Rect(table_start_x + column_widths[0], row_y, column_widths[1], row_height),
+#                 text=str(player["health"]),
+#                 manager=self.manager
+#             )
 
-            level_label = pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect(table_start_x + column_widths[0] + column_widths[1], row_y, column_widths[2], row_height),
-                text=str(player["level"]),
-                manager=self.manager
-            )
+#             level_label = pygame_gui.elements.UILabel(
+#                 relative_rect=pygame.Rect(table_start_x + column_widths[0] + column_widths[1], row_y, column_widths[2], row_height),
+#                 text=str(player["level"]),
+#                 manager=self.manager
+#             )
 
-            challenge_button = pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect(table_start_x + sum(column_widths[:-1]), row_y, column_widths[3], row_height),
-                text='Challenge',
-                manager=self.manager
-            )
+#             challenge_button = pygame_gui.elements.UIButton(
+#                 relative_rect=pygame.Rect(table_start_x + sum(column_widths[:-1]), row_y, column_widths[3], row_height),
+#                 text='Challenge',
+#                 manager=self.manager
+#             )
 
-    def handle_events(self, event):
-        # Handle challenge button events
-        if event.type == pygame.USEREVENT:
-            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                if event.ui_element == self.back_button:
-                    self.on_back()
-                # Check which player button was pressed
+#     def handle_events(self, event):
+#         # Handle challenge button events
+#         if event.type == pygame.USEREVENT:
+#             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+#                 if event.ui_element == self.back_button:
+#                     self.on_back()
+#                 # Check which player button was pressed
 
 class HomePage:
     def __init__(self, width, height, manager, on_levels, on_players, on_logout):
@@ -245,7 +255,7 @@ class HomePage:
                     self.on_levels()
 
                 elif event.ui_element == self.start_with_player:
-                    # Transition to PlayersPage
+                    # Transition to PlayersListPage
                     print("Start with Player button pressed")
                     self.on_players()
 
@@ -253,7 +263,6 @@ class HomePage:
                     # Transition to MenuGame
                     print("Logout button pressed")
                     self.on_logout()
-
 
 class LoginPage:
     def __init__(self, width, height, manager, on_cancel_login, on_login_success, socket):
@@ -513,11 +522,11 @@ class Game:
 
     def show_levels_page(self):
         self.before_change_page()
-        self.levels_page = LevelsPage(self.width, self.height, self.manager, self.show_home_page)
+        self.levels_page = MachineLevelsPage(self.width, self.height, self.manager, self.show_home_page, self.show_game_play)
 
     def show_players_page(self):
         self.before_change_page()
-        self.players_page = PlayersPage(self.width, self.height, self.manager, self.show_home_page)
+        self.players_page = PlayersListPage(self.width, self.height, self.manager, self.show_home_page)
 
     def show_register_page(self):
         self.before_change_page()
@@ -526,6 +535,10 @@ class Game:
     def show_login_page(self):
         self.before_change_page()
         self.login_page = LoginPage(self.width, self.height, self.manager, self.show_menu_game, self.show_home_page, self.socket)
+
+    def show_game_play(self):
+        self.before_change_page()
+        self.game_play = Game_Play(self.width, self.height, self.manager, self.show_home_page)
 
     def run(self):
         clock = pygame.time.Clock()
