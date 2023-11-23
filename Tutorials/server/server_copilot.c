@@ -76,7 +76,16 @@ int create_table_game_play() {
 }
 
 bool sendDataToClient(int client_socket, char* data) {
-    int sendBytes = send(client_socket, data, sizeof(data), 0);
+    int sendBytes = send(client_socket, data, 256, 0);
+    if (sendBytes < 0) {
+        perror("Lỗi gửi phản hồi cho máy chủ");
+        return false;
+    }
+    return true;
+}
+
+bool sendDataToClientConst(int client_socket, const char* data) {
+    int sendBytes = send(client_socket, data, 20, 0);
     if (sendBytes < 0) {
         perror("Lỗi gửi phản hồi cho máy chủ");
         return false;
@@ -202,25 +211,31 @@ void handle_register(int client_socket, char* data) {
 }
 
 void handle_get_list_player(int client_socket, char* data) {
-    char field_name[10][256] = {"USERNAME", "HEALTH", "ATTACK", "LEVEL", "STATUS"};
+    const char field_name[10][256] = {"USERNAME", "PASSWORD", "HEALTH", "ATTACK", "LEVEL", "STATUS"};
+    const char end[20] = "END";
+
     // callback get amount of list player
     int amount_user = 0;
     int callback(void *data, int argc, char **argv, char **azColName) {
-        // send username to client
-        char field_value[10][256];
+        // merge data: format: USERNAME=value;PASSWORD=value;HEALTH=value;ATTACK=value;LEVEL=value;STATUS=value;
+        char data_player[256] = "";
         for (int i = 0; i < argc; i++) {
-            // strcpy(field_value[i], argv[i] ? argv[i] : "NULL");
-            // printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-            sendDataToClient(client_socket, field_name[i]);
-            sendDataToClient(client_socket, argv[i] ? argv[i] : "NULL");
+            strcat(data_player, field_name[i]);
+            strcat(data_player, "=");
+            strcat(data_player, argv[i]);
+            strcat(data_player, ";");
         }
+
+        printf("data_player: %s\n", data_player);
+        // send data to client
+        sendDataToClient(client_socket, data_player);
         amount_user++;
         return 0;
     }
 
     // get list player
     char sql[1024];
-    sprintf(sql, "SELECT USERNAME FROM USERS;");
+    sprintf(sql, "SELECT USERNAME, PASSWORD FROM USERS;");
     char *err_msg = 0;
     int rc = sqlite3_exec(db, sql, callback, 0, &err_msg);
     if (rc != SQLITE_OK ) {
@@ -231,12 +246,8 @@ void handle_get_list_player(int client_socket, char* data) {
 
     // send amount of list player to client
     char response[256];
-    sprintf(response, "%d", amount_user);
-    sendDataToClient(client_socket, response);
-
     // send end of list player to client
-    char end[256] = "END";
-    sendDataToClient(client_socket, end);
+    sendDataToClientConst(client_socket, end);
 
     printf("Result: %s\n", response);
 }
