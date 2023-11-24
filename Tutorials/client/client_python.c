@@ -5,6 +5,48 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
+const char login_tag[256] = "LOGIN";
+const char register_tag[256] = "REGISTER";
+const char challenge_tag[256] = "CHALLENGE";
+const char ok_tag[256] = "OK";
+const char list_player_tag[256] = "LIST_PLAYER";
+const char end_tag[256] = "END";
+
+bool sendDataToClient(int server_socket, char* data) {
+    int sendBytes = send(server_socket, data, 256, 0);
+    if (sendBytes < 0) {
+        perror("Lỗi gửi yeu cau cho máy chủ");
+        return false;
+    }
+    return true;
+}
+
+bool sendDataToClientConst(int server_socket, const char* data) {
+    int sendBytes = send(server_socket, data, 20, 0);
+    if (sendBytes < 0) {
+        perror("Lỗi gửi yeu cau cho máy chủ");
+        return false;
+    }
+    return true;
+}
+
+bool recvDataFromClient(int server_socket, char* data) {
+    int recvBytes = recv(server_socket, data, 256, 0);
+    if (recvBytes < 0) {
+        perror("Lỗi nhận phản hồi từ máy chủ");
+        return false;
+    }
+    data[recvBytes] = '\0';
+    return true;
+}
+
+bool serverAvailable(char* response) {
+    if (strcmp(response, ok_tag) != 0) {
+        printf("Phản hồi không hợp lệ từ máy chủ\n");
+        return false;
+    }
+}
+
 int connect_to_server(const char* server_ip, int server_port) {
     int server_socket;
 
@@ -32,49 +74,33 @@ int connect_to_server(const char* server_ip, int server_port) {
 
 int login(int server_socket, char username_par[], char password_par[]) {
     // Gửi yêu cầu đăng nhập tới máy chủ
-    char request[256] = "LOGIN";
-    if (send(server_socket, request, sizeof(request), 0) < 0) {
-        perror("Lỗi gửi yêu cầu đăng nhập");
+    char username[256], password[256], response[256];
+    if (!sendDataToClientConst(server_socket, login_tag)) {
         return -1;
     }
 
     // Nhận phản hồi từ máy chủ
-    char response[256];
-    if (recv(server_socket, response, sizeof(response), 0) < 0) {
-        perror("Lỗi nhận phản hồi từ máy chủ");
+    if (!recvDataFromClient(server_socket, response)) {
         return -1;
     }
 
-    if (strcmp(response, "OK") != 0) {
-        printf("Phản hồi không hợp lệ từ máy chủ\n");
+    if (!serverAvailable(response)) {
         return -1;
     }
 
-    // Nhập tên đăng nhập và mật khẩu
-    char username[256];
-    char password[256];
-    
     strcpy(username, username_par);
     strcpy(password, password_par);
 
-    // printf("Tên đăng nhập: ");
-    // scanf("%s", username);
-    // printf("Mật khẩu: ");
-    // scanf("%s", password);
-
     // Gửi tên đăng nhập và mật khẩu tới máy chủ
-    if (send(server_socket, username, sizeof(username), 0) < 0) {
-        perror("Lỗi gửi tên đăng nhập");
+    if (!sendDataToClient(server_socket, username)) {
         return -1;
     }
-    if (send(server_socket, password, sizeof(password), 0) < 0) {
-        perror("Lỗi gửi mật khẩu");
+    if (!sendDataToClient(server_socket, password)) {
         return -1;
     }
 
     // Nhận phản hồi từ máy chủ
-    if (recv(server_socket, response, sizeof(response), 0) < 0) {
-        perror("Lỗi nhận phản hồi từ máy chủ");
+    if (!recvDataFromClient(server_socket, response)) {
         return -1;
     }
 
@@ -93,57 +119,40 @@ int login(int server_socket, char username_par[], char password_par[]) {
 
 int register_user(int server_socket, char username_par[], char password_par[], char confirm_password_par[]) {
     // Gửi yêu cầu đăng ký tới máy chủ
-    char request[256] = "REGISTER";
-    if (send(server_socket, request, strlen(request), 0) < 0) {
-        perror("Lỗi gửi yêu cầu đăng ký");
+    char response[256], username[256], password[256], confirm_password[256];
+
+    // Gửi yêu cầu đăng nhập tới máy chủ
+    if (!sendDataToClientConst(server_socket, register_tag)) {
         return -1;
     }
 
     // Nhận phản hồi từ máy chủ
-    char response[256];
-    if (recv(server_socket, response, sizeof(response), 0) < 0) {
-        perror("Lỗi nhận phản hồi từ máy chủ");
+    if (!recvDataFromClient(server_socket, response)) {
         return -1;
     }
 
-    if (strcmp(response, "OK") != 0) {
-        printf("Phản hồi không hợp lệ từ máy chủ\n");
+    if (!serverAvailable(response)) {
         return -1;
     }
 
     // Nhập tên đăng nhập và mật khẩu
-    char username[256];
-    char password[256];
-    char confirm_password[256];
-
     strcpy(username, username_par);
     strcpy(password, password_par);
     strcpy(confirm_password, confirm_password_par);
 
-    // printf("Tên đăng nhập: ");
-    // scanf("%s", username);
-    // printf("Mật khẩu: ");
-    // scanf("%s", password);
-    // printf("Xác nhận mật khẩu: ");
-    // scanf("%s", confirm_password);
-
     // Gửi tên đăng nhập, mật khẩu tới máy chủ
-    if (send(server_socket, username, sizeof(username), 0) < 0) {
-        perror("Lỗi gửi tên đăng ky");
+    if (!sendDataToClient(server_socket, username)) {
         return -1;
     }
-    if (send(server_socket, password, sizeof(password), 0) < 0) {
-        perror("Lỗi gửi mật khẩu");
+    if (!sendDataToClient(server_socket, password)) {
         return -1;
     }
-    if (send(server_socket, confirm_password, sizeof(confirm_password), 0) < 0) {
-        perror("Lỗi gửi xác nhận mật khẩu");
+    if (!sendDataToClient(server_socket, confirm_password)) {
         return -1;
     }
 
     // Nhận phản hồi từ máy chủ
-    if (recv(server_socket, response, sizeof(response), 0) < 0) {
-        perror("Lỗi nhận phản hồi từ máy chủ");
+    if (!recvDataFromClient(server_socket, response)) {
         return -1;
     }
 
@@ -165,17 +174,14 @@ int close_socket(int server_socket) {
     return 0;
 }
 
-int send_challenge(int server_socket, int usename) {
+int send_challenge(int server_socket, int username) {
     // Gửi yêu cầu đăng nhập tới máy chủ
-    char request[256] = "CHALLENGE";
-    if (send(server_socket, request, sizeof(request), 0) < 0) {
-        perror("Lỗi gửi yêu cầu đăng nhập");
+    if (!sendDataToClientConst(server_socket, challenge_tag)) {
         return -1;
     }
 
     // Receive response from server
-    if (recv(server_socket, response, sizeof(response), 0) < 0) {
-        perror("Lỗi nhận phản hồi từ máy chủ");
+    if (!recvDataFromClient(server_socket, response)) {
         return -1;
     }
 
@@ -193,7 +199,7 @@ int send_challenge(int server_socket, int usename) {
     return -1;
 }
 
-int receive_challenge(int server_socket, int usename) {
+int response_challenge(int server_socket, int username) {
     // Nhận phản hồi từ máy chủ
     char response[256];
     if (recv(server_socket, response, sizeof(response), 0) < 0) {
@@ -206,9 +212,7 @@ int receive_challenge(int server_socket, int usename) {
 
 int get_list_player(int server_socket) {
     // Gửi yêu cầu đăng nhập tới máy chủ
-    char request[256] = "LIST_PLAYER";
-    if (send(server_socket, request, sizeof(request), 0) < 0) {
-        perror("Lỗi gửi yêu cầu đăng nhập");
+    if (!sendDataToClientConst(server_socket, list_player_tag)) {
         return -1;
     }
    
@@ -220,7 +224,7 @@ int get_list_player(int server_socket) {
             return -1;
         }
 
-        if (strcmp(response, "END") == 0) {
+        if (strcmp(response, end_tag) == 0) {
             is_end = true;
         } else {
             printf("username: %s\n", response);
