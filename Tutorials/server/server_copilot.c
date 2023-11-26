@@ -6,105 +6,37 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <pthread.h>
-#include <sqlite3.h>
+
+#include "data_transform.h"
+#include "database.h"
 
 #define MAX_CLIENTS 10
 
-sqlite3 *db;
-
 int server_socket;
 int client_sockets[MAX_CLIENTS];
+
 pthread_t client_threads[MAX_CLIENTS];
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 char userLoginUsername[MAX_CLIENTS][256];
 char socket_request_challenge[256] = "";
-char socket_response_challenge[256] = "";
 char response_challenge[256] = "";
+bool isGameStarted = false;
 int successfulLoginCount = 0;
 
-bool sendDataToClient(int client_socket, char* data) {
-    int sendBytes = send(client_socket, data, 256, 0);
-    if (sendBytes < 0) {
-        perror("Lỗi gửi phản hồi cho máy khach");
-        return false;
+
+void start_game_two_player(int client_socket) {
+    bool isLoop = true;
+    while (isLoop) {
+        printf("Waiting for start game %d\n", client_socket);
+        pthread_mutex_lock(&mutex);
+        if (isGameStarted) {
+            sendDataToClient(client_socket, "START_GAME");
+            isLoop = false;
+        }
+        pthread_mutex_unlock(&mutex);
     }
-    return true;
-}
-
-bool sendTagFunction(int client_socket, const char* data) {
-    int sendBytes = send(client_socket, data, 20, 0);
-    if (sendBytes < 0) {
-        perror("Lỗi gửi phản hồi cho máy khach");
-        return false;
-    }
-    return true;
-}
-
-bool recvDataFromClient(int client_socket, char* data) {
-    int recvBytes = recv(client_socket, data, 256, 0);
-    if (recvBytes < 0) {
-        perror("Lỗi nhận phản hồi từ máy khach");
-        return false;
-    }
-    data[recvBytes] = '\0';
-    return true;
-}
-
-int initialize_database() {
-    // Open database
-    int rc = sqlite3_open("user_database.db", &db);
-    if (rc) {
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        return -1;
-    } else {
-        fprintf(stderr, "Opened database successfully\n");
-    }
-
-    // Create table
-    char *sql = "CREATE TABLE IF NOT EXISTS USERS("  \
-                "USERNAME TEXT PRIMARY KEY NOT NULL," \
-                "PASSWORD TEXT NOT NULL," \
-                "HEALTH TEXT NULL," \
-                "ATTACK TEXT NULL," \
-                "LEVEL TEXT NULL," \
-                "SOCKET TEXT NULL," \
-                "STATUS TEXT NULL);";
-
-    char *err_msg = 0;
-    rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
     
-    if (rc != SQLITE_OK ) {
-        fprintf(stderr, "SQL error: %s\n", err_msg);
-        sqlite3_free(err_msg);
-        return -1;
-    } else {
-        fprintf(stdout, "USERS Table created successfully\n");
-    }
-    return 0;
-}
-
-int create_table_game_play() {
-    // Create table
-    char *sql = "CREATE TABLE IF NOT EXISTS GAME_PLAYS("  \
-                "ROUND TEXT NOT NULL," \
-                "GAME_ID TEXT PRIMARY KEY NOT NULL," \
-                "PLAYER_1 TEXT NOT NULL," \
-                "PLAYER_2 TEXT NOT NULL," \
-                "PLAYER_1_NAME TEXT NOT NULL," \
-                "WINNER TEXT NULL);";
-
-    char *err_msg = 0;
-    int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
-    
-    if (rc != SQLITE_OK ) {
-        fprintf(stderr, "SQL error: %s\n", err_msg);
-        sqlite3_free(err_msg);
-        return -1;
-    } else {
-        fprintf(stdout, "GAME_PLAYS Table created successfully\n");
-    }
-    return 0;
 }
 
 void handle_login(int client_socket, char* data) {
@@ -116,25 +48,12 @@ void handle_login(int client_socket, char* data) {
         return 0;
     }
 
-    int callback_test(void *data, int argc, char **argv, char **azColName) {
-        // print data socket
-        printf("socket: %s\n", argv[0]);
-        return 0;
-    }
-
-    // send(client_socket, start, sizeof(start), 0);
     if (!sendDataToClient(client_socket, start)) return;
-    // TODO: Implement login logic
-    // Example:
     printf("Handling login.\n");
-    // receive data login from client
 
-    // if (!recv(client_socket, username, 256, 0)) return;
-    // if (!recv(client_socket, password, 256, 0)) return;
+    // receive data login from client
     if (!recvDataFromClient(client_socket, username)) return;
     if (!recvDataFromClient(client_socket, password)) return;
-
-    printf("Username: %s\n", username);
 
     // check if user already logged in
     pthread_mutex_lock(&mutex);
@@ -158,15 +77,9 @@ void handle_login(int client_socket, char* data) {
     char response[256];
     if (rc == SQLITE_OK && user_exists == 1) {
         // update SOCKET IN DATABASE
-        printf("Update socket in database: %d\n", client_socket);
         sprintf(sql, "UPDATE USERS SET SOCKET='%d' WHERE USERNAME='%s';", client_socket, username);
         char *err_msg = 0;
         rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
-
-        // check socket from database
-        sprintf(sql, "SELECT SOCKET FROM USERS WHERE USERNAME='%s';", username);
-        rc = sqlite3_exec(db, sql, callback_test, 0, &err_msg);
-        printf("Result After Test: %d\n", rc);
 
         // Lock the mutex before updating the global data structure
         pthread_mutex_lock(&mutex);
@@ -184,10 +97,6 @@ void handle_login(int client_socket, char* data) {
         }
     }
 
-    // PRINT RESULT
-    printf("Result: %s\n", response);
-
-    // Send response to client
     // send(client_socket, response, sizeof(response), 0);
     sendDataToClient(client_socket, response);
 }
@@ -230,8 +139,7 @@ void handle_register(int client_socket, char* data) {
 void handle_get_list_player(int client_socket, char* data) {
     const char field_name[10][256] = {"USERNAME", "PASSWORD", "HEALTH", "ATTACK", "LEVEL", "STATUS"};
     const char end[20] = "END";
-    char response[256];
-    char sql[1024];
+    char response[256], sql[1024];
     char *err_msg = 0;
 
     // callback get amount of list player
@@ -246,7 +154,6 @@ void handle_get_list_player(int client_socket, char* data) {
             strcat(data_player, ";");
         }
 
-        printf("data_player: %s\n", data_player);
         // send data to client
         if (!sendDataToClient(client_socket, data_player)) {
             printf("Error in callback\n");
@@ -267,8 +174,6 @@ void handle_get_list_player(int client_socket, char* data) {
 
     // send end of list player to client
     sendTagFunction(client_socket, end);
-
-    printf("Result: %s\n", response);
 }
 
 void handle_request_challenge(int client_socket, char* data) {
@@ -288,19 +193,14 @@ void handle_request_challenge(int client_socket, char* data) {
     // RECEIVE USERNAME FROM CLIENT
     recvDataFromClient(client_socket, username);
 
-    printf("Handling request challenge: %s\n", username);
-
     // CHECK IF STATUS USERNAME IS AVAILABLE IN DATABASE
     sprintf(sql, "SELECT SOCKET FROM USERS WHERE USERNAME='%s';", username);
     rc = sqlite3_exec(db, sql, callback, 0, &err_msg);
-
-    printf("Result: %d %d\n", rc, user_socket);
 
     // update socket_request_challenge
     pthread_mutex_lock(&mutex);
     if (user_socket != 0) {
         sprintf(socket_request_challenge, "%d", user_socket);
-        sprintf(socket_response_challenge, "%d", client_socket);
     }
     pthread_mutex_unlock(&mutex);
 
@@ -313,12 +213,8 @@ void handle_request_challenge(int client_socket, char* data) {
         }
         pthread_mutex_unlock(&mutex);
 
-        printf("response_content: %s\n", response_content);
-
         // check if response_challenge is ACCEPT or REJECT
         if (strcmp(response_content, "ACCEPT") == 0 || strcmp(response_content, "REJECT") == 0) {
-            printf("Response challenge: %s\n", response_content);
-            // send response to client
             sendDataToClient(client_socket, response_content);
             break;
         }
@@ -327,7 +223,6 @@ void handle_request_challenge(int client_socket, char* data) {
 
 void handle_look_request_challenge(int client_socket) {
     char socket_request[256];
-    printf("Handling look request challenge\n");
     while (1) {
         pthread_mutex_lock(&mutex);
         if (socket_request_challenge[0] != '\0') {
@@ -336,11 +231,8 @@ void handle_look_request_challenge(int client_socket) {
         }
         pthread_mutex_unlock(&mutex);
 
-        printf("socket_request: %s\n", socket_request);
         // check if socket_request is not empty
         if (socket_request[0] != '\0') {
-            printf("Handling look request challenge from : %s\n", socket_request);
-            // send socket_request to client
             sendDataToClient(client_socket, socket_request);
             break;
         }
@@ -356,21 +248,24 @@ void handle_response_challenge(int client_socket) {
     pthread_mutex_lock(&mutex);
     strcpy(response_challenge, response);
     pthread_mutex_unlock(&mutex);
+
+    start_game_two_player(client_socket);
 }
 
 void handle_start_game(int client_socket) {
     printf("Handling start game\n");
 
     pthread_mutex_lock(&mutex);
-    // send response to socket_request
-    sendDataToClient(atoi(socket_response_challenge), "START_GAME");
-    sendDataToClient(client_socket, "START_GAME");
-    // reset socket_request_challenge
-    socket_request_challenge[0] = '\0';
-    socket_response_challenge[0] = '\0';
+    isGameStarted = true;
     pthread_mutex_unlock(&mutex);
 
     printf("Start game\n");
+
+    start_game_two_player(client_socket);
+}
+
+void handle_playing_game(int client_socket) {
+    printf("Handling playing game\n");
 }
 
 void* client_handler(void* client_socket_ptr) {

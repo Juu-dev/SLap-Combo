@@ -1,2 +1,2 @@
 #!/bin/sh
-./client 5002
+./client 5004

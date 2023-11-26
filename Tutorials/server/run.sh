@@ -1,2 +1,2 @@
 #!/bin/sh
-./server_copilot 5002
+./server_copilot 5004

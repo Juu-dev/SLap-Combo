@@ -348,12 +348,14 @@ int response_challenge(int server_socket, char* response) {
         return -1;
     }
 
+    // ==============================================
     // Nhận phản hồi từ máy chủ
-    if (!recvDataFromServer(server_socket, response)) {
+    char server_tag[256];
+    if (!recvDataFromServer(server_socket, server_tag)) {
         return -1;
     }
 
-    if (strcmp(response, "START_GAME") == 0) {
+    if (strcmp(server_tag, "START_GAME") == 0) {
         printf("Bat dau game\n");
     } else {
         printf("Phản hồi không hợp lệ từ máy chủ, start game error\n");
@@ -368,6 +370,7 @@ int start_game(int server_socket) {
         return -1;
     }
 
+    // ==============================================
     // Nhận phản hồi từ máy chủ
     char response[256];
     if (!recvDataFromServer(server_socket, response)) {
@@ -382,6 +385,7 @@ int start_game(int server_socket) {
 
     return 0;
 }
+
 
 
 int main(int argc, char* argv[]) {
