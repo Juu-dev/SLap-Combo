@@ -22,7 +22,7 @@ libclient.action_invite.argtypes = [ctypes.c_int, ctypes.c_char_p]
 libclient.action_invite.restype = ctypes.c_int
 libclient.action_response_invite.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p]
 libclient.action_response_invite.restype = ctypes.c_int
-libclient.action_get_list_player.argtypes = [ctypes.c_int]
+libclient.action_get_list_player.argtypes = [ctypes.c_int, ctypes.c_char_p]
 libclient.action_get_list_player.restype = ctypes.c_int
 libclient.action_update_status.argtypes = [ctypes.c_int, ctypes.c_char_p]
 libclient.action_update_status.restype = ctypes.c_int
@@ -95,10 +95,10 @@ class Socket:
         return accept_invite_success
     
     def get_list_player(self):
-        list_player = libclient.action_get_list_player(self.client_socket)
+        self.buffer = ctypes.create_string_buffer(256)
+        list_player = libclient.action_get_list_player(self.client_socket, self.buffer)
         # list_player = 0 => success
-        print(f"list_player: {list_player}")
-        return list_player
+        return self.buffer.value
 
     def update_status(self, status):
         update_status = libclient.action_update_status(self.client_socket, status)
@@ -189,6 +189,7 @@ class PlayersListPage:
         self.width, self.height = width, height
         self.manager = manager
         self.on_back = on_back
+        self.on_get_list_player = on_get_list_player
 
         self.create_players_list()
 
@@ -206,9 +207,18 @@ class PlayersListPage:
         column_widths = [100, 100, 50, 150]  # Widths for username, health, level, challenge button
 
         list_player = self.on_get_list_player()
+        list_player = list_player.decode('utf-8')
+        # remove the last character '|'
+        list_player = list_player[:-1]
+        # split list_player to array object
+        list_player = list_player.split('|')
+        # remove the last : and split each object to array object
+        for i in range(len(list_player)):
+            list_player[i] = {"username": list_player[i].split(':')[0], "health": 1234, "level": 5}
+        
         print(f"list_player: {list_player}")
 
-        for index, player in enumerate(FAKE_PLAYERS):
+        for index, player in enumerate(list_player):
             # Positioning for each row
             row_y = table_start_y + index * row_height
 

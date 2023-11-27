@@ -202,7 +202,7 @@ int action_wait_invite(char *username, int server_socket) {
     return 0;
 }
 
-int action_get_list_player(int server_socket) {
+int action_get_list_player(int server_socket, char *list_player) {
     char buffer[256];
 
     // Gửi thông tin đăng ký tới server
@@ -214,6 +214,7 @@ int action_get_list_player(int server_socket) {
     // recv(server_socket, buffer, sizeof(buffer) - 1, 0);
     memset(buffer, 0, sizeof(buffer)); // Xóa buffer
     recv(server_socket, buffer, sizeof(buffer) - 1, 0);
+    strcpy(list_player, buffer);
 
     printf("*****************************************\n");
     printf("Server response: %s\n", buffer);
