@@ -12,12 +12,22 @@ libclient = ctypes.CDLL('./libclient.so')
 # Function Prototypes
 libclient.connect_to_server.argtypes = [ctypes.c_char_p, ctypes.c_int]
 libclient.connect_to_server.restype = ctypes.c_int
-libclient.login.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p]
-libclient.login.restype = ctypes.c_int
-libclient.register_user.argtypes = [ctypes.c_int,  ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
-libclient.register_user.restype = ctypes.c_int
-libclient.close_socket.argtypes = [ctypes.c_int]
-libclient.close_socket.restype = None
+libclient.action_login.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p]
+libclient.action_login.restype = ctypes.c_int
+libclient.action_register.argtypes = [ctypes.c_int,  ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
+libclient.action_register.restype = ctypes.c_int
+libclient.action_wait_invite.argtypes = [ctypes.c_char_p, ctypes.c_int]
+libclient.action_wait_invite.restype = ctypes.c_int
+libclient.action_invite.argtypes = [ctypes.c_int, ctypes.c_char_p]
+libclient.action_invite.restype = ctypes.c_int
+libclient.action_response_invite.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p]
+libclient.action_response_invite.restype = ctypes.c_int
+libclient.action_get_list_player.argtypes = [ctypes.c_int]
+libclient.action_get_list_player.restype = ctypes.c_int
+libclient.action_update_status.argtypes = [ctypes.c_int, ctypes.c_char_p]
+libclient.action_update_status.restype = ctypes.c_int
+libclient.close_client_socket.argtypes = [ctypes.c_int]
+libclient.close_client_socket.restype = None
 
 IP_SERVER = "127.0.0.1"
 PORT_SERVER = 5000
@@ -42,6 +52,9 @@ class Socket:
     def __init__(self):
         ip_server = ctypes.c_char_p(b"127.0.0.1")
         port_server = ctypes.c_int(PORT_SERVER)
+
+        self.username = ctypes.create_string_buffer(256)
+
         self.client_socket = libclient.connect_to_server(ip_server, port_server)
         if self.client_socket < 0:
             print("Failed to connect")
@@ -49,19 +62,52 @@ class Socket:
             print("Successfully connect to server.")
 
     def login(self, username, password):
-        login_success = libclient.login(self.client_socket, username.encode('utf-8'), password.encode('utf-8'))
+        login_success = libclient.action_login(self.client_socket, username.encode('utf-8'), password.encode('utf-8'))
         # login_success = 0 => success
         print(f"login_success: {login_success}")
         return login_success
 
     def register(self, username, password, confirm_password):
-        register_success = libclient.register_user(self.client_socket, username.encode('utf-8'), password.encode('utf-8'), confirm_password.encode('utf-8'))
+        register_success = libclient.action_register(self.client_socket, username.encode('utf-8'), password.encode('utf-8'), confirm_password.encode('utf-8'))
         # register_success = 0 => success
         print(f"register_success: {register_success}")
         return register_success
+    
+    def wait_invite(self):
+        wait_invite_success = libclient.action_wait_invite(self.username, self.client_socket)
+        # wait_invite_success = 0 => success
+        print(f"wait_invite_success: {wait_invite_success}")
+        print(f"buffer invite from: {self.buffer.value}")
+        return wait_invite_success
+    
+    # go to game play
+    def invite(self, username):
+        invite_success = libclient.action_invite(self.client_socket, username)
+        # invite_success = 0 => success
+        print(f"invite_success: {invite_success}")
+        return invite_success
 
+    # go to game play
+    def response_invite(self, response):
+        accept_invite_success = libclient.action_response_invite(self.client_socket, self.username, response)
+        # accept_invite_success = 0 => success
+        print(f"accept_invite_success: {accept_invite_success}")
+        return accept_invite_success
+    
+    def get_list_player(self):
+        list_player = libclient.action_get_list_player(self.client_socket)
+        # list_player = 0 => success
+        print(f"list_player: {list_player}")
+        return list_player
+
+    def update_status(self, status):
+        update_status = libclient.action_update_status(self.client_socket, status)
+        # update_status = 0 => success
+        print(f"update_status: {update_status}")
+        return update_status
+    
     def close(self):
-        libclient.close_socket(self.client_socket)
+        libclient.close_client_socket(self.client_socket)
 
 class MachineLevelsPage:
     def __init__(self, width, height, manager, on_back, on_game_play):
@@ -109,35 +155,6 @@ class MachineLevelsPage:
                     print("Level button pressed")
                     self.on_game_play()
 
-class PlayersListPage:
-    def __init__(self, width, height, manager, on_back):
-        self.width, self.height = width, height
-        self.manager = manager
-        self.on_back = on_back
-
-        self.create_players_list()
-
-    def create_players_list(self):
-        self.back_button = pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect(20, 20, 100, 40),
-                text='Back',
-                manager=self.manager
-            )
-        # Example: Create a list of player buttons
-        self.player1_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(100, 100, 200, 50),
-            text='Player 1: Challenge',
-            manager=self.manager
-        )
-        
-    def handle_events(self, event):
-        # Handle level selection events
-        if event.type == pygame.USEREVENT:
-            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                if event.ui_element == self.back_button:
-                    self.on_back()
-                # Check which level button was pressed
-
 # class PlayersListPage:
 #     def __init__(self, width, height, manager, on_back):
 #         self.width, self.height = width, height
@@ -148,53 +165,85 @@ class PlayersListPage:
 
 #     def create_players_list(self):
 #         self.back_button = pygame_gui.elements.UIButton(
-#             relative_rect=pygame.Rect(20, 20, 100, 40),
-#             text='Back',
+#                 relative_rect=pygame.Rect(20, 20, 100, 40),
+#                 text='Back',
+#                 manager=self.manager
+#             )
+#         # Example: Create a list of player buttons
+#         self.player1_button = pygame_gui.elements.UIButton(
+#             relative_rect=pygame.Rect(100, 100, 200, 50),
+#             text='Player 1: Challenge',
 #             manager=self.manager
 #         )
-
-#         # Create a table to display player information
-#         # Table setup
-#         table_start_x, table_start_y = 100, 100
-#         row_height = 50
-#         column_widths = [100, 100, 50, 150]  # Widths for username, health, level, challenge button
-
-#         for index, player in enumerate(FAKE_PLAYERS):
-#             # Positioning for each row
-#             row_y = table_start_y + index * row_height
-
-#             # Create labels and buttons for each player
-#             username_label = pygame_gui.elements.UILabel(
-#                 relative_rect=pygame.Rect(table_start_x, row_y, column_widths[0], row_height),
-#                 text=player["username"],
-#                 manager=self.manager
-#             )
-
-#             health_label = pygame_gui.elements.UILabel(
-#                 relative_rect=pygame.Rect(table_start_x + column_widths[0], row_y, column_widths[1], row_height),
-#                 text=str(player["health"]),
-#                 manager=self.manager
-#             )
-
-#             level_label = pygame_gui.elements.UILabel(
-#                 relative_rect=pygame.Rect(table_start_x + column_widths[0] + column_widths[1], row_y, column_widths[2], row_height),
-#                 text=str(player["level"]),
-#                 manager=self.manager
-#             )
-
-#             challenge_button = pygame_gui.elements.UIButton(
-#                 relative_rect=pygame.Rect(table_start_x + sum(column_widths[:-1]), row_y, column_widths[3], row_height),
-#                 text='Challenge',
-#                 manager=self.manager
-#             )
-
+        
 #     def handle_events(self, event):
-#         # Handle challenge button events
+#         # Handle level selection events
 #         if event.type == pygame.USEREVENT:
 #             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
 #                 if event.ui_element == self.back_button:
 #                     self.on_back()
-#                 # Check which player button was pressed
+#                 # Check which level button was pressed
+
+class PlayersListPage:
+    def __init__(self, width, height, manager, on_back, on_get_list_player):
+        self.width, self.height = width, height
+        self.manager = manager
+        self.on_back = on_back
+
+        self.create_players_list()
+
+    def create_players_list(self):
+        self.back_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(20, 20, 100, 40),
+            text='Back',
+            manager=self.manager
+        )
+
+        # Create a table to display player information
+        # Table setup
+        table_start_x, table_start_y = 100, 100
+        row_height = 50
+        column_widths = [100, 100, 50, 150]  # Widths for username, health, level, challenge button
+
+        list_player = self.on_get_list_player()
+        print(f"list_player: {list_player}")
+
+        for index, player in enumerate(FAKE_PLAYERS):
+            # Positioning for each row
+            row_y = table_start_y + index * row_height
+
+            # Create labels and buttons for each player
+            username_label = pygame_gui.elements.UILabel(
+                relative_rect=pygame.Rect(table_start_x, row_y, column_widths[0], row_height),
+                text=player["username"],
+                manager=self.manager
+            )
+
+            health_label = pygame_gui.elements.UILabel(
+                relative_rect=pygame.Rect(table_start_x + column_widths[0], row_y, column_widths[1], row_height),
+                text=str(player["health"]),
+                manager=self.manager
+            )
+
+            level_label = pygame_gui.elements.UILabel(
+                relative_rect=pygame.Rect(table_start_x + column_widths[0] + column_widths[1], row_y, column_widths[2], row_height),
+                text=str(player["level"]),
+                manager=self.manager
+            )
+
+            challenge_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect(table_start_x + sum(column_widths[:-1]), row_y, column_widths[3], row_height),
+                text='Challenge',
+                manager=self.manager
+            )
+
+    def handle_events(self, event):
+        # Handle challenge button events
+        if event.type == pygame.USEREVENT:
+            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == self.back_button:
+                    self.on_back()
+                # Check which player button was pressed
 
 class HomePage:
     def __init__(self, width, height, manager, on_levels, on_players, on_logout):
@@ -526,7 +575,7 @@ class Game:
 
     def show_players_page(self):
         self.before_change_page()
-        self.players_page = PlayersListPage(self.width, self.height, self.manager, self.show_home_page)
+        self.players_page = PlayersListPage(self.width, self.height, self.manager, self.show_home_page, self.socket.get_list_player)
 
     def show_register_page(self):
         self.before_change_page()
