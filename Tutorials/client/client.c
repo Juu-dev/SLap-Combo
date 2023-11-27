@@ -16,6 +16,13 @@ typedef struct {
     char status[256];
 } data_player_struct;
 
+typedef struct {
+    int round;
+    int health_1;
+    int health_2;
+    int socket_in_round;
+} GameState;
+
 const char login_tag[256] = "LOGIN";
 const char register_tag[256] = "REGISTER";
 const char challenge_tag[256] = "REQUEST_CHALLENGE";
@@ -23,9 +30,15 @@ const char look_req_chal[256] = "LOOK_REQUEST_CHALLENGE";
 const char res_chal[256] = "RESPONSE_CHALLENGE";
 const char look_res_chal[256] = "LOOK_RESPONSE_CHALLENGE";
 const char start_game_tag[256] = "START_GAME";
+const char attack_tag[256] = "ATTACK";
 const char ok_tag[256] = "OK";
 const char list_player_tag[256] = "LIST_PLAYER";
 const char end_tag[256] = "END";
+
+// void Deserialization(char buffer[]) {
+//     GameState receivedGameState;
+//     memcpy(&receivedGameState, buffer, sizeof(GameState));
+// }
 
 bool sendDataToServer(int server_socket, char* data) {
     int sendBytes = send(server_socket, data, 256, 0);
@@ -364,6 +377,66 @@ int response_challenge(int server_socket, char* response) {
     return 0;
 }
 
+int wait_turn(int server_socket) {
+    // Nhận phản hồi từ máy chủ
+    char response[256];
+    bool isLoop = true;
+    while (isLoop) {
+        if (!recvDataFromServer(server_socket, response)) {
+            return -1;
+        }
+        // response:  ROUND=1;HEALTH_1=100;HEALTH_2=100;SOCKET_IN_ROUND=5;
+        const char field_name[4][256] = {"ROUND", "HEALTH_1", "HEALTH_2", "SOCKET_IN_ROUND"};
+        char* token;
+        char * delimiter = ";";
+        char* response_copy = strdup(response);
+        int index = 0;
+        GameState gameState;
+        while ((token = strsep(&response_copy, delimiter)) != NULL && token[0] != '\0') {
+            char* key = strtok(token, "=");
+            char* value = strtok(NULL, "=");
+            for (int i = 0; i < 4; i++) {
+                if (strcmp(key, field_name[i]) == 0) {
+                    if (i == 0) {
+                        gameState.round = atoi(value);
+                    } else if (i == 1) {
+                        gameState.health_1 = atoi(value);
+                    } else if (i == 2) {
+                        gameState.health_2 = atoi(value);
+                    } else if (i == 3) {
+                        gameState.socket_in_round = atoi(value);
+                    }
+                }
+            }
+            index++;
+        }
+
+        if (gameState.socket_in_round == server_socket) {
+            printf("Round: %d\n", gameState.round);
+            printf("Health 1: %d\n", gameState.health_1);
+            printf("Health 2: %d\n", gameState.health_2);
+            isLoop = false;
+        }
+    }
+
+    // printf("Wait turn: %d\n", gameState.socket_in_round);
+    return 0;
+}
+
+int attack(int server_socket, int attack_value_int) {
+    // Gửi yêu cầu đăng nhập tới máy chủ
+    char attack_value[256];
+    printf("Nhap gia tri tan cong: ");
+    scanf("%s", attack_value);
+
+    if (!sendDataToServer(server_socket, attack_value)) {
+        return -1;
+    }
+
+    wait_turn(server_socket);
+    return 0;
+}
+
 int start_game(int server_socket) {
     // Gửi yêu cầu đăng nhập tới máy chủ
     if (!sendTagFunction(server_socket, start_game_tag)) {
@@ -379,14 +452,13 @@ int start_game(int server_socket) {
 
     if (strcmp(response, "START_GAME") == 0) {
         printf("Bat dau game\n");
+        wait_turn(server_socket);
     } else {
         printf("Phản hồi không hợp lệ từ máy chủ, start game error\n");
     }
 
     return 0;
 }
-
-
 
 int main(int argc, char* argv[]) {
     // Thực hiện kết nối tới máy chủ
@@ -407,6 +479,7 @@ int main(int argc, char* argv[]) {
         printf("5. LOOK REQUEST CHALLENGE\n");
         printf("6. RESPONSE CHALLENGE\n");
         printf("7. START GAME\n");
+        printf("8. ATTACK\n");
         printf("Nhập lựa chọn: ");
         scanf("%d", &choice);
 
@@ -425,6 +498,8 @@ int main(int argc, char* argv[]) {
             response_challenge(server_socket, "ACCEPT");
         } else if (choice == 7) {
             start_game(server_socket);
+        } else if (choice == 8) {
+            attack(server_socket, 10);
         } else {
             printf("Lựa chọn không hợp lệ\n");
         }

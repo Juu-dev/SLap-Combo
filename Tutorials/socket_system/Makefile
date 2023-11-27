@@ -8,7 +8,7 @@ CLIENT=client
 all: $(SERVER) $(CLIENT)
 
 $(SERVER): $(SERVER).c
-	$(CC) -o $(SERVER) $(SERVER).c $(CFLAGS)
+	$(CC) -o $(SERVER) $(SERVER).c $(CFLAGS) -lsqlite3
 
 $(CLIENT): $(CLIENT).c
 	$(CC) -o $(CLIENT) $(CLIENT).c $(CFLAGS)

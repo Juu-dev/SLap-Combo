@@ -12,6 +12,14 @@
 
 #define MAX_CLIENTS 10
 
+typedef struct {
+    int round;
+    int health_1;
+    int health_2;
+    int socket_in_round;
+} GameState;
+GameState gameState;
+
 int server_socket;
 int client_sockets[MAX_CLIENTS];
 
@@ -20,16 +28,82 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 char userLoginUsername[MAX_CLIENTS][256];
 char socket_request_challenge[256] = "";
+char socket_response_challenge[256] = "";
+char socket_current_round[256] = "";
 char response_challenge[256] = "";
 bool isGameStarted = false;
+bool isGameFinished = false;
 int successfulLoginCount = 0;
 
+void handle_playing_game(int client_socket) {
+    printf("Handling playing game\n");
+    bool isLoop = true;
+    while (isLoop) {
+        printf("Waiting for playing game %d\n", client_socket);
+        pthread_mutex_lock(&mutex);
+        if (!isGameFinished) {
+            printf("Playing game %d, %d\n", client_socket, gameState.socket_in_round);
+            // if socket_current_round == client_socket => receive data from client
+            if (gameState.socket_in_round == client_socket) {
+                // receive data from client
+                char data[256];
+                recvDataFromClient(client_socket, data);
+                // update game state
+                printf("Attack from %d: %s\n", client_socket, data);
+                if (gameState.socket_in_round == atoi(socket_request_challenge)) {
+                    gameState.socket_in_round = atoi(socket_response_challenge);
+                }
+                else {
+                    gameState.socket_in_round = atoi(socket_request_challenge);
+                }
+                printf("socket_in_round: %d\n", gameState.socket_in_round);
+            }
+            else {
+                const char field_name[10][256] = {"ROUND", "HEALTH_1", "HEALTH_2", "SOCKET_IN_ROUND"};
+                char * delimiter = ";";
+
+                // merge to string
+                char data[256] = "";
+                char temp[256];
+                for (int i = 0; i < 4; i++) {
+                    strcat(data, field_name[i]);
+                    strcat(data, "=");
+                    if (i == 0) {
+                        sprintf(temp, "%d", gameState.round);
+                        strcat(data, temp);
+                    }
+                    else if (i == 1) {
+                        sprintf(temp, "%d", gameState.health_1);
+                        strcat(data, temp);
+                    }
+                    else if (i == 2) {
+                        sprintf(temp, "%d", gameState.health_2);
+                        strcat(data, temp);
+                    }
+                    else if (i == 3) {
+                        sprintf(temp, "%d", gameState.socket_in_round);
+                        strcat(data, temp);
+                    }
+                    strcat(data, delimiter);
+                }
+
+                // send data to client
+                sendDataToClient(client_socket, data);
+            }
+        }
+        else {
+            isLoop = false;
+        }
+        pthread_mutex_unlock(&mutex);
+    }
+
+}
 
 void start_game_two_player(int client_socket) {
     bool isLoop = true;
     while (isLoop) {
-        printf("Waiting for start game %d\n", client_socket);
         pthread_mutex_lock(&mutex);
+        printf("Waiting for start game %d\n", client_socket);
         if (isGameStarted) {
             sendDataToClient(client_socket, "START_GAME");
             isLoop = false;
@@ -37,6 +111,7 @@ void start_game_two_player(int client_socket) {
         pthread_mutex_unlock(&mutex);
     }
     
+    handle_playing_game(client_socket);
 }
 
 void handle_login(int client_socket, char* data) {
@@ -112,6 +187,10 @@ void handle_register(int client_socket, char* data) {
     if (!recvDataFromClient(client_socket, username)) return;
     if (!recvDataFromClient(client_socket, password)) return;
     if (!recvDataFromClient(client_socket, confirm_password)) return;
+
+    printf("username: %s\n", username);
+    printf("password: %s\n", password);
+    printf("confirm_password: %s\n", confirm_password);
 
     // Check if password and confirm password match
     if (strcmp(password, confirm_password) != 0) {
@@ -201,6 +280,7 @@ void handle_request_challenge(int client_socket, char* data) {
     pthread_mutex_lock(&mutex);
     if (user_socket != 0) {
         sprintf(socket_request_challenge, "%d", user_socket);
+        sprintf(socket_response_challenge, "%d", client_socket);
     }
     pthread_mutex_unlock(&mutex);
 
@@ -227,7 +307,7 @@ void handle_look_request_challenge(int client_socket) {
         pthread_mutex_lock(&mutex);
         if (socket_request_challenge[0] != '\0') {
             strcpy(socket_request, socket_request_challenge);
-            socket_request_challenge[0] = '\0';
+            // socket_request_challenge[0] = '\0';
         }
         pthread_mutex_unlock(&mutex);
 
@@ -257,15 +337,15 @@ void handle_start_game(int client_socket) {
 
     pthread_mutex_lock(&mutex);
     isGameStarted = true;
+    gameState.round = 1;
+    gameState.health_1 = 100;
+    gameState.health_2 = 100;
+    gameState.socket_in_round = atoi(socket_request_challenge);
     pthread_mutex_unlock(&mutex);
 
     printf("Start game\n");
 
     start_game_two_player(client_socket);
-}
-
-void handle_playing_game(int client_socket) {
-    printf("Handling playing game\n");
 }
 
 void* client_handler(void* client_socket_ptr) {
@@ -299,6 +379,8 @@ void* client_handler(void* client_socket_ptr) {
             handle_response_challenge(client_socket);
         } else if (strncmp(buffer, "START_GAME", 8) == 0) {
             handle_start_game(client_socket);
+        } else if (strncmp(buffer, "ATTACK", 8) == 0) {
+            handle_playing_game(client_socket);
         } else {
             // Invalid request
             const char response[256] = "Invalid request";
