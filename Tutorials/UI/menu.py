@@ -1,6 +1,7 @@
 import pygame
 import pygame_gui
 import sys
+import threading
 
 import ctypes
 
@@ -48,6 +49,21 @@ class PlayerMachine:
         self.Game_Play = Game_Play()
         self.Game_Play.run()
 
+class StoppableThread(threading.Thread):
+    def __init__(self, handle_client_data):
+        super().__init__()
+        self.stop_requested = False
+        self.handle_client_data = handle_client_data
+
+    def run(self):
+        while not self.stop_requested:
+            print("Thread is running")
+            self.handle_client_data()
+        print("Thread terminating")
+
+    def stop(self):
+        self.stop_requested = True
+
 class Socket:
     def __init__(self):
         ip_server = ctypes.c_char_p(b"127.0.0.1")
@@ -73,35 +89,46 @@ class Socket:
         print(f"register_success: {register_success}")
         return register_success
     
+    def handle_client_data(self):
+        while True:
+            wait_invite_success = libclient.action_wait_invite(self.username, self.client_socket)
+            print(f"wait_invite_success: {wait_invite_success}")
+            if self.buffer:
+                print(f"invite from {self.buffer.value}")
+                break   
+            # Xử lý dữ liệu nhận được
+    
     def wait_invite(self):
-        wait_invite_success = libclient.action_wait_invite(self.username, self.client_socket)
+        self.my_thread = StoppableThread(self.handle_client_data)
+        self.my_thread.start()
         # wait_invite_success = 0 => success
-        print(f"wait_invite_success: {wait_invite_success}")
-        print(f"buffer invite from: {self.buffer.value}")
-        return wait_invite_success
     
     # go to game play
     def invite(self, username):
-        invite_success = libclient.action_invite(self.client_socket, username)
+        # delete thread
+        self.my_thread.stop()
+        invite_success = libclient.action_invite(self.client_socket, username.encode('utf-8'))
         # invite_success = 0 => success
         print(f"invite_success: {invite_success}")
         return invite_success
 
     # go to game play
     def response_invite(self, response):
-        accept_invite_success = libclient.action_response_invite(self.client_socket, self.username, response)
+        accept_invite_success = libclient.action_response_invite(self.client_socket, self.username, response.encode('utf-8'))
         # accept_invite_success = 0 => success
         print(f"accept_invite_success: {accept_invite_success}")
         return accept_invite_success
     
     def get_list_player(self):
+        # delete thread
+        self.my_thread.stop()
         self.buffer = ctypes.create_string_buffer(256)
         list_player = libclient.action_get_list_player(self.client_socket, self.buffer)
         # list_player = 0 => success
         return self.buffer.value
 
     def update_status(self, status):
-        update_status = libclient.action_update_status(self.client_socket, status)
+        update_status = libclient.action_update_status(self.client_socket, status.encode('utf-8'))
         # update_status = 0 => success
         print(f"update_status: {update_status}")
         return update_status
@@ -185,11 +212,11 @@ class MachineLevelsPage:
 #                 # Check which level button was pressed
 
 class PlayersListPage:
-    def __init__(self, width, height, manager, on_back, on_get_list_player):
+    def __init__(self, width, height, manager, on_back, socket):
         self.width, self.height = width, height
         self.manager = manager
         self.on_back = on_back
-        self.on_get_list_player = on_get_list_player
+        self.socket = socket
 
         self.create_players_list()
 
@@ -206,19 +233,19 @@ class PlayersListPage:
         row_height = 50
         column_widths = [100, 100, 50, 150]  # Widths for username, health, level, challenge button
 
-        list_player = self.on_get_list_player()
-        list_player = list_player.decode('utf-8')
+        self.list_player = self.socket.get_list_player()
+        self.list_player = self.list_player.decode('utf-8')
         # remove the last character '|'
-        list_player = list_player[:-1]
+        self.list_player = self.list_player[:-1]
         # split list_player to array object
-        list_player = list_player.split('|')
+        self.list_player = self.list_player.split('|')
         # remove the last : and split each object to array object
-        for i in range(len(list_player)):
-            list_player[i] = {"username": list_player[i].split(':')[0], "health": 1234, "level": 5}
+        for i in range(len(self.list_player)):
+            self.list_player[i] = {"username": self.list_player[i].split(':')[0], "health": 1234, "level": 5}
         
-        print(f"list_player: {list_player}")
+        print(f"list_player: {self.list_player}")
 
-        for index, player in enumerate(list_player):
+        for index, player in enumerate(self.list_player):
             # Positioning for each row
             row_y = table_start_y + index * row_height
 
@@ -247,6 +274,8 @@ class PlayersListPage:
                 manager=self.manager
             )
 
+            setattr(self, f'{index}_challenge_button', challenge_button)
+
     def handle_events(self, event):
         # Handle challenge button events
         if event.type == pygame.USEREVENT:
@@ -254,16 +283,23 @@ class PlayersListPage:
                 if event.ui_element == self.back_button:
                     self.on_back()
                 # Check which player button was pressed
+                for index, player in enumerate(self.list_player):
+                    button = getattr(self, f'{index}_challenge_button')
+                    if event.ui_element == button:
+                        print(f"Challenge button pressed for player: {player['username']}")
+                        self.socket.invite(player['username'])
 
 class HomePage:
-    def __init__(self, width, height, manager, on_levels, on_players, on_logout):
+    def __init__(self, width, height, manager, on_levels, on_players, on_logout, socket):
         self.width, self.height = width, height
         self.manager = manager
         self.on_levels = on_levels
         self.on_players = on_players
         self.on_logout = on_logout
+        self.socket = socket
 
         self.create_home_page()
+        self.socket.wait_invite()
 
     def create_home_page(self):
         # Create buttons
@@ -577,7 +613,7 @@ class Game:
     
     def show_home_page(self):
         self.before_change_page()
-        self.home_page = HomePage(self.width, self.height, self.manager, self.show_levels_page, self.show_players_page, self.show_menu_game)
+        self.home_page = HomePage(self.width, self.height, self.manager, self.show_levels_page, self.show_players_page, self.show_menu_game, self.socket)
 
     def show_levels_page(self):
         self.before_change_page()
@@ -585,7 +621,7 @@ class Game:
 
     def show_players_page(self):
         self.before_change_page()
-        self.players_page = PlayersListPage(self.width, self.height, self.manager, self.show_home_page, self.socket.get_list_player)
+        self.players_page = PlayersListPage(self.width, self.height, self.manager, self.show_home_page, self.socket)
 
     def show_register_page(self):
         self.before_change_page()

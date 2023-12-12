@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/select.h>
 
 #define SERVER_IP "127.0.0.1" // Thay đổi IP này tùy theo cài đặt của server
 #define SERVER_PORT 5000
@@ -132,7 +133,7 @@ void wait_start_game(int server_socket) {
 
 int action_invite(int server_socket, char* username) {
     char buffer[1024];
-    // char username[50];
+    char username_token[50];
     char response[50];
 
     // printf("Username: ");
@@ -150,11 +151,10 @@ int action_invite(int server_socket, char* username) {
     printf("*****************************************\n");
 
     // split buffer to get username, response
-    char *token = strtok(buffer, ":");
-    token = strtok(NULL, ":");
-    strcpy(username, token);
-    token = strtok(NULL, ":");
-    strcpy(response, token);
+    if (sscanf(buffer, "%49[^:]:%49[^:]", username_token, response) == 2) {
+        printf("Username: %s\n", username_token);
+        printf("Response: %s\n", response);
+    }
 
     // send start game to server
     if (strcmp(response, "accept") == 0) {
@@ -185,15 +185,40 @@ int action_response_invite(int server_socket, char *username, char *response) {
 }
 
 int action_wait_invite(char *username, int server_socket) {
-    char buffer[1024];
-    // Nhận phản hồi từ server
-    memset(buffer, 0, sizeof(buffer)); // Xóa buffer
-    recv(server_socket, buffer, sizeof(buffer) - 1, 0);
+    fd_set readfds;
+    struct timeval tv;
+    int retval;
+    
+    // Khởi tạo một tập hợp chứa một socket
+    FD_ZERO(&readfds);
+    FD_SET(server_socket, &readfds);
 
-    // split buffer to get username
-    char *token = strtok(buffer, ":");
-    token = strtok(NULL, ":");
-    strcpy(username, token);
+    // Đặt thời gian chờ
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+
+    retval = select(server_socket + 1, &readfds, NULL, NULL, &tv);
+
+    if (retval == -1) {
+        perror("select()");
+        return 1;
+    } else if (retval) {
+        printf("Data is available now.\n");
+        // Đọc dữ liệu ở đây
+        char buffer[1024];
+        char username_token[50];
+        char response[50];
+
+        // Nhận phản hồi từ server
+        memset(buffer, 0, sizeof(buffer)); // Xóa buffer
+        recv(server_socket, buffer, sizeof(buffer) - 1, 0);
+        printf("*****************************************\n");
+        printf("Server response: %s\n", buffer);
+        printf("*****************************************\n");
+    } else {
+        printf("No data within five seconds.\n");
+    }
+
     // printf("*****************************************\n");
     // printf("Server response: Invite from %s\n", token);
     // printf("*****************************************\n");
@@ -239,6 +264,10 @@ int action_update_status(int server_socket, char *status) {
     return 0;
 }
 
+void close_client_socket(int server_socket) {
+    close(server_socket);
+}
+
 int connect_to_server(char *ip, int port) {
     int server_socket;
     struct sockaddr_in server_addr;
@@ -268,46 +297,8 @@ int connect_to_server(char *ip, int port) {
 
     printf("Connected to server.\n");
 
-    // bool is_running = true;
-    // while (is_running) {
-    //     // choose option
-    //     printf("1. Register\n");
-    //     printf("2. Login\n");
-    //     printf("3. Exit\n");
-    //     printf("4. Invite\n");
-    //     printf("5. Wait invite\n");
-    //     printf("6. Get list users\n");
-    //     printf("7. Update status\n");
-    //     printf("Choose option: ");
-    //     int option;
-    //     scanf("%d", &option);
-
-    //     // control flow
-    //     if (option == 1) {
-    //         action_register(server_socket);
-    //     } else if (option == 2) {
-    //         action_login(server_socket);
-    //     } else if (option == 3) {
-    //         is_running = false;
-    //     } else if (option == 4) {
-    //         action_invite(server_socket);
-    //     } else if (option == 5) {
-    //         action_wait_invite(server_socket);
-    //     } else if (option == 6) {
-    //         action_get_list_player(server_socket);
-    //     } else if (option == 7) {
-    //         action_update_status(server_socket);
-    //     } else {
-    //         printf("Invalid option\n");
-    //         exit(EXIT_FAILURE);
-    //     }
-    // } 
-
-    // Đóng socket
-
     return server_socket;
 }
 
-void close_client_socket(int server_socket) {
-    close(server_socket);
-}
+
+int main() {}

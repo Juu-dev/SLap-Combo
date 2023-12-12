@@ -36,7 +36,6 @@ char userLoginUsername[MAX_CLIENTS][256];
 int socketUsername[MAX_CLIENTS];
 int successfulLoginCount = 0;
 
-
 void update_status_account(int sd, char *state) {
     char sql[500];
 
@@ -455,7 +454,7 @@ void handle_get_list_user(int sd) {
         strcat(data_player, "|");
         return 0;
     }
-
+    
     sprintf(sql, "SELECT * FROM USERS;");
     
     printf("==============================================\n");

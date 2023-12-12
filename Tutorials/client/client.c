@@ -120,8 +120,6 @@ int login(int server_socket) {
         return -1;
     }
 
-
-
     // Nhập tên đăng nhập và mật khẩu
     printf("Tên đăng nhập: ");
     scanf("%s", username);
