@@ -2,8 +2,8 @@ import random
 import ctypes
 import socket
 import sys
+from constant import *
 
-IP_SERVER = "127.0.0.1"
 PORT_SERVER = 5002
 
 class SocketClient:

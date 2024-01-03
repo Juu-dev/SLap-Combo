@@ -1,7 +1,8 @@
 import socket
 import select
+from constant import *
 
-IP_SERVER = "127.0.0.1"
+IP_SERVER_LAN = "192.168.31.37"
 
 class SocketServer:
     def __init__(self, port):
@@ -18,8 +19,8 @@ class SocketServer:
         try:
             print("=====Connect to server=====")
             self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            print("1. Kết nối máy chủ thành công.", IP_SERVER, self.port)
-            self.server_socket.bind((IP_SERVER, self.port))
+            print("1. Kết nối máy chủ thành công.", IP_SERVER_LAN, self.port)
+            self.server_socket.bind((IP_SERVER_LAN, self.port))
             print("2. Máy chủ đã được liên kết thành công.")
             self.server_socket.listen(5)
             print("3. Máy chủ đang lắng nghe...")

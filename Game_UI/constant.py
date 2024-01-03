@@ -53,6 +53,8 @@ SLASH_INDEX = 2
 LINK_SLASH = "./image/Slash/" + str(SLASH_INDEX) +"/left/"
 LINK_SHINOBI_LEFT = './image/Player/Shinobi_Left'
 
+IP_SERVER = "192.168.31.90"
+
 # SCREEN
 SCREEN_WIDTH = 1080
 SCREEN_HEIGHT = 600
