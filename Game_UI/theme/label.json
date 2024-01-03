@@ -1,0 +1,29 @@
+{
+  "#title-label": {
+    "font": {
+      "bold": 1,
+      "size": "50"
+    }
+  },
+  "#invitation_message": {
+    "colours": {
+      "normal_text": "#ffffff"
+    },
+    "font": {
+      "bold": 1,
+      "size": "15"
+    }
+  },
+  "label": {
+    "colours": {
+      "normal_text": "#000000",
+      "hovered_text": "#FFFFFF",
+      "selected_text": "#FFFFFF",
+      "disabled_text": "#6d736f",
+      "text_shadow": "#777777"
+    },
+    "font": {
+      "bold": 1
+    }
+  }
+}
