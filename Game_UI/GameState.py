@@ -20,6 +20,13 @@ class GameState:
         self.loser = loser
         self.time = time
 
+    def reset(self):
+        self.me.hp = 100
+        self.you.hp = 100
+        self.winner = None
+        self.loser = None
+        self.time = None
+
 class User:
     def __init__(self, name, position):
         self.name = name

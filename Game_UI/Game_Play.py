@@ -16,12 +16,13 @@ class StoppableThread(threading.Thread):
         self.port = port
         self.attack_enemy_left = attack_enemy_left
         self.attack_enemy_right = attack_enemy_right
-        if socket_server:
-            self.socket_server = socket_server
-        else:
-            print("Socket server is None: ", socket_server)
-            self.socket_server = SocketServer(self.port)
-            self.socket_server.connect()
+        self.socket_server = socket_server
+        # if socket_server:
+        #     self.socket_server = socket_server
+        # else:
+        #     print("Socket server is None: ", socket_server)
+        #     self.socket_server = SocketServer(self.port)
+        #     self.socket_server.connect()
 
     def run(self):
         while not self.stop_requested:
@@ -44,10 +45,9 @@ class StoppableThread(threading.Thread):
 
     def stop(self):
         self.stop_requested = True
-        self.socket_server.close_connection()
 
 class Game_Play:
-    def __init__(self, screen, manager, socket, port_random, my_turn, game_state: GameState, show_home_page, update_history, port_target = None, socket_server = None):
+    def __init__(self, screen, manager, socket, port_random, my_turn, game_state: GameState, show_home_page, update_history, port_target = None, socket_server: SocketServer = None):
         self.manager = manager
         self.count = 1
         self.screen = screen
@@ -228,6 +228,8 @@ class Game_Play:
                         else:
                             print("You win")
                             self.game_state.update_winner_loser(self.game_state.me.name, self.game_state.you.name, time.time())
+                        self.thread_game.stop()
+                        self.socket_server.disconnect_to_target()
                         self.update_history()
                         self.show_home_page()
                         break

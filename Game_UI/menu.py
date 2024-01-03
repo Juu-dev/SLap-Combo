@@ -123,10 +123,13 @@ class Game:
 
     # def show_home_page(self, socket_server: SocketServer = None):
     def show_home_page(self):
+        self.first = False
         if not self.socket_server:
+            print("Khởi tạo socket server: ", self.socket.port_random)
+            self.first = True
             self.socket_server = SocketServer(self.socket.port_random)
         self.before_change_page()
-        self.home_page = HomePage(self.screen, self.width, self.height, self.manager, self.show_levels_page, self.show_players_page, self.show_menu_game, self.socket, self.show_game_play, self.socket_server, self.game_state, self.player_available, self.get_history)
+        self.home_page = HomePage(self.screen, self.width, self.height, self.manager, self.show_levels_page, self.show_players_page, self.show_menu_game, self.socket, self.show_game_play, self.socket_server, self.game_state, self.player_available, self.get_history, self.first)
         
     def show_levels_page(self):
         self.before_change_page()
@@ -145,6 +148,7 @@ class Game:
         self.login_page = LoginPage(self.screen, self.width, self.height, self.manager, self.show_menu_game, self.show_home_page, self.socket, self.game_state)
 
     def show_game_play(self, port_random, my_turn, port_target = None):
+        self.game_state.reset()
         self.before_change_page()
         self.update_special()
         self.game_play = Game_Play(self.screen, self.manager, self.socket, port_random, my_turn, self.game_state, self.show_home_page, self.update_history, port_target, self.socket_server)

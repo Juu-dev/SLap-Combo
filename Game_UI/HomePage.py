@@ -10,19 +10,24 @@ from PopUp import PopUp
 from constant import *
 
 class StoppableThread(threading.Thread):
-    def __init__(self, port, create_popup, socket_server: SocketServer):
+    def __init__(self, port, create_popup, socket_server: SocketServer, first):
         super().__init__()
         self.stop_requested = False
         self.port = port
         self.create_popup = create_popup
         print("===StoppableThread===: ", socket_server)
-        if socket_server is None:
-            self.socket_server = SocketServer(self.port)
-        else:
-            self.socket_server = socket_server
+        self.socket_server = socket_server
+        self.first = first
+        # if socket_server is None:
+        #     self.check_connection = True
+        #     self.socket_server = SocketServer(self.port)
+        # else:
+        #     self.check_connection = False
+        #     self.socket_server = socket_server
 
     def run(self):
-        self.socket_server.connect()
+        if self.first:
+            self.socket_server.connect()
         while not self.stop_requested:
            # Check for new connections
             self.socket_server.check_for_new_connections()
@@ -46,7 +51,7 @@ class StoppableThread(threading.Thread):
         # self.socket_server.close_connection()
 
 class HomePage:
-    def __init__(self, screen, width, height, manager, on_levels, show_players_page, on_logout, socket: Socket, show_game_play, socket_server: SocketServer, game_state, player_available, get_history):
+    def __init__(self, screen, width, height, manager, on_levels, show_players_page, on_logout, socket: Socket, show_game_play, socket_server: SocketServer, game_state, player_available, get_history, first):
         self.width, self.height = width, height
         self.manager = manager
         self.on_levels = on_levels
@@ -64,7 +69,7 @@ class HomePage:
         self.history_game = []
         self.data_history = self.get_history()
 
-        self.notification_thread = StoppableThread(self.socket.port_random, self.create_popup, self.socket_server)
+        self.notification_thread = StoppableThread(self.socket.port_random, self.create_popup, self.socket_server, first)
         self.notification_thread.start()
 
         self.avail = True

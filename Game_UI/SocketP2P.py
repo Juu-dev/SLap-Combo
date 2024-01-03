@@ -37,6 +37,15 @@ class SocketServer:
         except Exception as e:
             print("Ket noi máy chủ thất bại:", str(e)) 
 
+    def disconnect_to_target(self):
+        print("=====Disconnect to target=====")
+        try:
+            self.client.close()
+            self.client = None
+            print("Ngắt kết nối thành công")
+        except Exception as e:
+            print("Ngắt kết nối thất bại:", str(e))
+
     def check_for_new_connections(self):
         ready_to_read, _, _ = select.select([self.server_socket], [], [], 0)
         for sock in ready_to_read:
@@ -77,8 +86,11 @@ class SocketServer:
             client_socket.sendall(message.encode())
 
     def send_msg_target(self, message):
+        print("=====Send message to target=====: ", self.client)
         if not self.client:
+            print("Không có kết nối nào được thiết lập.")
             self.connect_to_target(self.target_client_port)
+        print("Gửi tin nhắn đến", self.client.getpeername(), ":", message, "port:", self.target_client_port)
         self.client.sendall(message.encode())
 
     def close_connection(self):
