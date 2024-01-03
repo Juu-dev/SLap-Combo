@@ -1,6 +1,8 @@
 import pygame
 
 GAMEOVER_IMG = "./image/gameover.png"
+WIN_IMG = "./image/win.png"
+LOSE_IMG = "./image/lose.png"
 
 INDICATOR_TOGGLE_DELAY = 3000
 
@@ -52,8 +54,6 @@ LOGIN_IMG = "./image/background/summer 1/login.png"
 SLASH_INDEX = 2
 LINK_SLASH = "./image/Slash/" + str(SLASH_INDEX) +"/left/"
 LINK_SHINOBI_LEFT = './image/Player/Shinobi_Left'
-
-IP_SERVER = "192.168.31.90"
 
 # SCREEN
 SCREEN_WIDTH = 1080

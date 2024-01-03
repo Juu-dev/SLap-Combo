@@ -5,6 +5,8 @@ import sys
 from constant import *
 
 PORT_SERVER = 5002
+# IP_SERVER = "192.168.31.90" => server ip lan
+IP_SERVER = "127.0.0.1"
 
 class SocketClient:
     def __init__(self):

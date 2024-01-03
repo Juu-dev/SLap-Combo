@@ -2,7 +2,8 @@ import socket
 import select
 from constant import *
 
-IP_SERVER_LAN = "192.168.31.37"
+# IP_SERVER_LAN = "192.168.31.37" => my computer ip lan
+IP_SERVER_LAN = "127.0.0.1"
 
 class SocketServer:
     def __init__(self, port):

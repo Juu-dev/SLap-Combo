@@ -94,7 +94,7 @@ class Game_Play:
 
         # Load background and text surface
         self.background = pygame.image.load(BACKGROUND_IMG).convert_alpha()
-        self.text_surface = pygame.font.Font(None, 50).render("My game!", False, 'Green')
+        # self.text_surface = pygame.font.Font(None, 50).render("My game!", False, 'Green')
 
         # Initialize sprite groups
         self.player_left = pygame.sprite.GroupSingle()
@@ -116,6 +116,25 @@ class Game_Play:
             manager=self.manager,
         )
         self.quit_button.hide()
+
+        # draw name to identify my player and enemy player
+
+    def draw_name(self):
+        font = pygame.font.Font(None, 36) 
+        if self.game_state.me.position == 'left':
+            name = self.game_state.me.name
+            name_surface = font.render(name, True, (0, 0, 255)) 
+            self.screen.blit(name_surface, (self.player_left_ins.rect.x + self.player_left_ins.rect.width // 2 - name_surface.get_width() // 2, self.player_left_ins.rect.y - name_surface.get_height() - 10))
+            name = self.game_state.you.name
+            name_surface = font.render(name, True, (255, 0, 0)) 
+            self.screen.blit(name_surface, (self.player_right_ins.rect.x + self.player_right_ins.rect.width // 2 - name_surface.get_width() // 2, self.player_right_ins.rect.y - name_surface.get_height() - 10))
+        else:
+            name = self.game_state.you.name
+            name_surface = font.render(name, True, (0, 0, 255)) 
+            self.screen.blit(name_surface, (self.player_left_ins.rect.x + self.player_left_ins.rect.width // 2 - name_surface.get_width() // 2, self.player_left_ins.rect.y - name_surface.get_height() - 10))
+            name = self.game_state.me.name
+            name_surface = font.render(name, True, (255, 0, 0)) 
+            self.screen.blit(name_surface, (self.player_right_ins.rect.x + self.player_right_ins.rect.width // 2 - name_surface.get_width() // 2, self.player_right_ins.rect.y - name_surface.get_height() - 10))
     
     def render_number(self, number, num_pos):
         font = pygame.font.Font(None, 36) 
@@ -296,15 +315,19 @@ class Game_Play:
 
         # Draw background fit to screen
         self.draw_background()
+        self.draw_name()
 
         # load GAMEOVER_IMG png in center of window
         if self.is_game_over:
-            gameover_img = pygame.image.load(GAMEOVER_IMG).convert_alpha()
+            self.image_over_game = WIN_IMG
+            if self.game_state.me.hp <= 0:
+                self.image_over_game = LOSE_IMG
+            gameover_img = pygame.image.load(self.image_over_game).convert_alpha()
             gameover_img = pygame.transform.scale(gameover_img, (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
             self.screen.blit(gameover_img, (SCREEN_WIDTH // 2 - gameover_img.get_width() // 2, SCREEN_HEIGHT // 2 - gameover_img.get_height() // 2))
 
         # Draw text surface
-        self.screen.blit(self.text_surface, (500, 100))
+        # self.screen.blit(self.text_surface, (500, 100))
         # Draw player left
         self.player_left.draw(self.screen)
         # Draw player right
