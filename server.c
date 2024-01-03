@@ -152,6 +152,8 @@ int connect_to_client(char *ip, int port) {
     int client_socket;
     struct sockaddr_in server_address;
 
+    printf("----ip----: %s\n", ip);
+
     // Create socket file descriptor
     if ((client_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("Socket creation failed");
