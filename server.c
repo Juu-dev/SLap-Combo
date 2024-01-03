@@ -8,7 +8,7 @@
 #include "database.h"
 #include "mutex.h"
 
-#define PORT 5003
+#define PORT 5002
 #define MAX_CONNECTIONS 10
 
 #define CLIENT_IP "127.0.0.1" 
@@ -17,6 +17,18 @@ int handle_login(int client_socket, char *buffer) {
     char *username = strtok(NULL, ":");
     char *password = strtok(NULL, ":");
     char *socket_port_invite = strtok(NULL, ":");
+    char client_ip[INET_ADDRSTRLEN];
+
+    // Trích xuất địa chỉ IP của client
+    struct sockaddr_in client_address;
+    socklen_t client_address_len = sizeof(client_address);
+    if (getpeername(client_socket, (struct sockaddr *)&client_address, &client_address_len) == 0) {
+        char client_ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &(client_address.sin_addr), client_ip, INET_ADDRSTRLEN);
+        printf("Client IP: %s\n", client_ip);
+    } else {
+        perror("getpeername failed");
+    }
 
     printf("Username: %s\n", username);
     printf("Password: %s\n", password);
@@ -41,6 +53,9 @@ int handle_login(int client_socket, char *buffer) {
 
     // Update user status to available
     update_status(username, "available");
+
+    // Update user IP
+    update_ip_user(username, client_ip);
 
     // Send response to client
     send(client_socket, "OK", strlen("OK"), 0);
@@ -200,9 +215,14 @@ int handle_invite(int client_socket, char *buffer) {
     // get socket port (send invite)
     socket_port_from =  get_socket_port_invite(sender_username);
 
+    char ip_sender[INET_ADDRSTRLEN];
+    get_ip_user(sender_username, ip_sender);
+
+    printf("----ip_sender----: %s\n", ip_sender);
+
     // SEND INVITE to client_socket_2
     char message[1024];
-    sprintf(message, "INVITE_FROM:%s:%d", sender_username, socket_port_from);
+    sprintf(message, "INVITE_FROM:%s:%s:%d", sender_username, ip_sender, socket_port_from);
 
     // get socket_port_invite from username
     socket_port_invite = get_socket_port_invite(username);
@@ -210,8 +230,14 @@ int handle_invite(int client_socket, char *buffer) {
 
     printf("----socket_port_invite----: %d\n", socket_port_invite);
 
+    // get ip from username
+    char ip[INET_ADDRSTRLEN];
+    get_ip_user(username, ip);
+
+    printf("----ip----: %s\n", ip);
+
     // connect to client
-    int client_socket_2 = connect_to_client(CLIENT_IP, socket_port_invite);
+    int client_socket_2 = connect_to_client(ip, socket_port_invite);
 
     printf("----connect successly to client_socket_2----: %d\n", client_socket_2);
 
@@ -249,7 +275,7 @@ int handle_invite(int client_socket, char *buffer) {
         printf("Invite successful\n");
 
         char message[1024];
-        sprintf(message, "OK:%d", socket_port_invite);
+        sprintf(message, "OK:%s:%d", ip, socket_port_invite);
 
         send(client_socket, message, strlen(message), 0);
     } else {

@@ -147,11 +147,11 @@ class Game:
         self.before_change_page()
         self.login_page = LoginPage(self.screen, self.width, self.height, self.manager, self.show_menu_game, self.show_home_page, self.socket, self.game_state)
 
-    def show_game_play(self, port_random, my_turn, port_target = None):
+    def show_game_play(self, port_random, my_turn, port_target = None, ip_target = None):
         self.game_state.reset()
         self.before_change_page()
         self.update_special()
-        self.game_play = Game_Play(self.screen, self.manager, self.socket, port_random, my_turn, self.game_state, self.show_home_page, self.update_history, port_target, self.socket_server)
+        self.game_play = Game_Play(self.screen, self.manager, self.socket, port_random, my_turn, self.game_state, self.show_home_page, self.update_history, port_target, self.socket_server, ip_target)
         self.game_play.run()
 
     def show_game_play_machine(self, level_machine):

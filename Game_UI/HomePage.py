@@ -36,8 +36,9 @@ class StoppableThread(threading.Thread):
             # if have message then show popup invite class PopUp and wait for accept or decline
             if message:
                 print("Message HomePage: ", message)
-                # message = "INVITE_FROM:admin_1:port"
-                self.socket_server.target_client_port = int(message.split(':')[2])
+                # message = "INVITE_FROM:admin_1:ip:port"
+                self.socket_server.target_client_ip = message.split(':')[2]
+                self.socket_server.target_client_port = int(message.split(':')[3])
                 self.socket_server.your_name = message.split(':')[1]
 
                 message = f"Invite from {message.split(':')[1]}"

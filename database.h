@@ -9,6 +9,8 @@ int check_username(char *username);
 int check_username_avail(char *username);
 int check_password(char *username, char *password);
 int get_list_user(char *list_user);
+int update_ip_user(char *username, char *ip);
+int get_ip_user(char *username, char *ip);
 
 int create_history_table();
 int insert_history(char *username, char *winner, char *loser, char *time);

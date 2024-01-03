@@ -42,7 +42,8 @@ int create_users_table() {
         "id INTEGER PRIMARY KEY AUTOINCREMENT," \
         "username TEXT UNIQUE," \
         "password TEXT NOT NULL," \
-        "status TEXT NOT NULL DEFAULT 'offline');";
+        "status TEXT NOT NULL DEFAULT 'offline',"\
+        "ip TEXT NOT NULL DEFAULT '');";
     
     char *err_msg = 0;
     int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
@@ -203,7 +204,69 @@ int get_list_user(char *list_user) {
     }
 
     sqlite3_finalize(stmt);
-    return count;
+    return 0;
+}
+
+int update_ip_user(char *username, char *ip) {
+    char *sql = "UPDATE users SET ip = ? WHERE username like ?";
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+
+    printf("username in sql: %s\n", username);
+
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
+        return 1;
+    }
+
+    sqlite3_bind_text(stmt, 1, ip, strlen(ip), 0);
+    sqlite3_bind_text(stmt, 2, username, strlen(username), 0);
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
+        return 1;
+    }
+
+    sqlite3_finalize(stmt);
+    return 0;
+
+}
+
+int get_ip_user(char *username, char *ip) {
+    char *sql = "SELECT * FROM users WHERE username like ?";
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    int count = 0;
+
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
+        return 1;
+    }
+
+    sqlite3_bind_text(stmt, 1, username, strlen(username), 0);
+
+    printf("username in sql: %s\n", username);
+
+    while (1) {
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_ROW) {
+            int id = sqlite3_column_int(stmt, 0);
+            char *username = (char *)sqlite3_column_text(stmt, 1);
+            char *password = (char *)sqlite3_column_text(stmt, 2);
+            char *status = (char *)sqlite3_column_text(stmt, 3);
+            char *ip_exp = (char *)sqlite3_column_text(stmt, 4);
+
+            strcpy(ip, ip_exp);
+            count++;
+        }
+        else {
+            break;
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    return 0;
 }
 
 
@@ -337,7 +400,7 @@ int get_petitioner_invite_by_respondent(int respondent, char *petitioner_invite)
 
     // merge all information into a tring with format: id:username:password:status;id:username:password:status;...
     sqlite3_finalize(stmt);
-    return count;
+    return 0;
 }
 
 int get_respondent_status(int respondent, int petitioner, char *respondent_status) {
@@ -374,7 +437,7 @@ int get_respondent_status(int respondent, int petitioner, char *respondent_statu
 
     // merge all information into a tring with format: id:username:password:status;id:username:password:status;...
     sqlite3_finalize(stmt);
-    return count;
+    return 0;
 }
 
 int delete_invite_by_respondent(int respondent) {
@@ -485,5 +548,5 @@ int get_history(char *username, char *history) {
     printf("history in database: %s\n", history);
     // merge all information into a tring with format: id:username:password:status;id:username:password:status;...
     sqlite3_finalize(stmt);
-    return count;
+    return 0;
 }

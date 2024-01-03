@@ -47,7 +47,7 @@ class StoppableThread(threading.Thread):
         self.stop_requested = True
 
 class Game_Play:
-    def __init__(self, screen, manager, socket, port_random, my_turn, game_state: GameState, show_home_page, update_history, port_target = None, socket_server: SocketServer = None):
+    def __init__(self, screen, manager, socket, port_random, my_turn, game_state: GameState, show_home_page, update_history, port_target = None, socket_server: SocketServer = None, ip_target = None):
         self.manager = manager
         self.count = 1
         self.screen = screen
@@ -55,6 +55,7 @@ class Game_Play:
         self.port_random = port_random
         self.my_turn = my_turn
         self.port_target = port_target
+        self.ip_target = ip_target
         self.socket_server = socket_server
         self.game_state = game_state
         self.show_home_page = show_home_page
@@ -83,7 +84,7 @@ class Game_Play:
         # connect to socket target
         if my_turn:
             print("Connect to target")
-            self.thread_game.socket_server.connect_to_target(self.port_target)
+            self.thread_game.socket_server.connect_to_target(self.ip_target, self.port_target)
 
         pygame.init()
         # Set up game screen

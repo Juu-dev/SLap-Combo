@@ -130,11 +130,12 @@ class PlayersListPage:
                         # if message include "OK" then wait for response from player
                         if message and message[0] == "O" and message[1] == "K":
                             print("Da gui loi moi thanh cong", str(message))
-                            # messafe: OK:port_random
-                            port_target = int(message.split(':')[1])
+                            # messafe: OK:ip_target:port_target
+                            ip_target = message.split(':')[1]
+                            port_target = int(message.split(':')[2])
                             self.game_state.set_you(player['username'], 'right')
                             self.game_state.update_me('left')
-                            self.show_game_play(self.socket.port_random, True, port_target)
+                            self.show_game_play(self.socket.port_random, True, port_target, ip_target)
                         else:
                             print("Challenge failed")
                             # message = self.game_state.you.name + ""

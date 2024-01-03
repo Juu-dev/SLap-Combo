@@ -4,7 +4,7 @@ import socket
 import sys
 
 IP_SERVER = "127.0.0.1"
-PORT_SERVER = 5003
+PORT_SERVER = 5002
 
 class SocketClient:
     def __init__(self):

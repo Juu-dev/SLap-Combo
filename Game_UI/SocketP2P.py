@@ -10,6 +10,7 @@ class SocketServer:
         self.port = port
         self.client = None
         self.target_client_port = None
+        self.target_client_ip = None
 
         self.your_name = None
 
@@ -27,11 +28,11 @@ class SocketServer:
         except Exception as e:
             print("Khởi tạo máy chủ thất bại:", str(e))
 
-    def connect_to_target(self, port_target):
+    def connect_to_target(self, ip, port_target):
         print("=====Port target=====", port_target)
         try:
             self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client.connect((IP_SERVER, port_target))
+            self.client.connect((ip, port_target))
             # self.server_socket.setblocking(0)  # Set the socket to non-blocking
             print("Ket noi may chu thanh cong:", port_target)
         except Exception as e:
@@ -89,7 +90,7 @@ class SocketServer:
         print("=====Send message to target=====: ", self.client)
         if not self.client:
             print("Không có kết nối nào được thiết lập.")
-            self.connect_to_target(self.target_client_port)
+            self.connect_to_target(self.target_client_ip, self.target_client_port)
         print("Gửi tin nhắn đến", self.client.getpeername(), ":", message, "port:", self.target_client_port)
         self.client.sendall(message.encode())
 
