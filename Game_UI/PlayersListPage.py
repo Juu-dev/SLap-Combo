@@ -119,6 +119,8 @@ class PlayersListPage:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                 if event.ui_element == self.back_button:
                     self.show_home_page()
+                elif event.ui_element == self.refresh_button:
+                    self.create_players_list()
                 # Check which player button was pressed
                 for index, player in enumerate(self.list_player):
                     button = getattr(self, f'{index}_challenge_button')
@@ -137,9 +139,9 @@ class PlayersListPage:
                             print("Challenge failed")
                             # message = self.game_state.you.name + ""
                             self.create_popup(message)
-                if event.ui_element == self.refresh_button:
-                    self.create_players_list()
-                elif event.ui_element == self.pop_up.accept_button or event.ui_element == self.pop_up.decline_button:
-                    self.pop_up.kill()
-                    self.pop_up = None
+                        return
+                if self.pop_up is not None:
+                    if event.ui_element == self.pop_up.accept_button or event.ui_element == self.pop_up.decline_button:
+                        self.pop_up.kill()
+                        self.pop_up = None
 

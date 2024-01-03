@@ -146,7 +146,8 @@ class Game:
 
     def show_game_play(self, port_random, my_turn, port_target = None):
         self.before_change_page()
-        self.game_play = Game_Play(self.screen, port_random, my_turn, self.game_state, port_target, self.socket_server)
+        self.update_special()
+        self.game_play = Game_Play(self.screen, self.manager, self.socket, port_random, my_turn, self.game_state, self.show_home_page, self.update_history, port_target, self.socket_server)
         self.game_play.run()
 
     def show_game_play_machine(self, level_machine):

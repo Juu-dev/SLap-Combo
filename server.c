@@ -178,8 +178,7 @@ int handle_get_list_user(int client_socket) {
     }
 
     printf("Send list user success\n");
-    return 0;
-}
+    return 0;}
 
 
 int handle_invite(int client_socket, char *buffer) {
@@ -332,7 +331,7 @@ int handle_get_history(int client_socket, char *buffer) {
     printf("Check username success\n");
 
     // Get history
-    if (get_history(username, history) == 1) {
+    if (get_history(username, history) < 0) {
         send(client_socket, "Error getting history", strlen("Error getting history"), 0);
         return 1;
     }

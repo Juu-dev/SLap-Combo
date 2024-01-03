@@ -1,9 +1,13 @@
 import threading
 import pygame
 from sys import exit
+import time
+
+import pygame_gui
 from SocketP2P import SocketServer
 from Player import Player
 from constant import *
+from GameState import GameState
 
 class StoppableThread(threading.Thread):
     def __init__(self, port, socket_server: SocketServer, attack_enemy_left, attack_enemy_right):
@@ -43,15 +47,18 @@ class StoppableThread(threading.Thread):
         self.socket_server.close_connection()
 
 class Game_Play:
-    def __init__(self, screen, port_random, my_turn, game_state, port_target = None, socket_server = None):
-
+    def __init__(self, screen, manager, socket, port_random, my_turn, game_state: GameState, show_home_page, update_history, port_target = None, socket_server = None):
+        self.manager = manager
         self.count = 1
         self.screen = screen
+        self.socket = socket
         self.port_random = port_random
         self.my_turn = my_turn
         self.port_target = port_target
         self.socket_server = socket_server
         self.game_state = game_state
+        self.show_home_page = show_home_page
+        self.update_history = update_history
         self.damage = 0
         self.is_game_over = False
 
@@ -79,8 +86,6 @@ class Game_Play:
             self.thread_game.socket_server.connect_to_target(self.port_target)
 
         pygame.init()
-        self.clock = pygame.time.Clock()
-
         # Set up game screen
         # self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
@@ -103,6 +108,13 @@ class Game_Play:
         # Initialize right player
         self.player_right_ins = Player(LINK_SHINOBI_LEFT, FLOOR_PLAYER_RIGHT_WIDTH, FLOOR_PLAYER_RIGHT_HEIGHT, 0.15, LINK_SLASH, SLASH_INDEX, 0.2, 'right')
         self.player_right.add(self.player_right_ins)
+
+        self.quit_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(SCREEN_WIDTH // 2 - 75, SCREEN_HEIGHT // 2 + 100, 150, 50),
+            text='Back to Home',
+            manager=self.manager,
+        )
+        self.quit_button.hide()
     
     def render_number(self, number, num_pos):
         font = pygame.font.Font(None, 36) 
@@ -162,15 +174,11 @@ class Game_Play:
         self.hidden_indicator()
 
     def check_game_over(self):
-        if self.game_state.me.hp <= 0:
+        if self.game_state.me.hp <= 0 or self.game_state.you.hp <= 0:
             self.hidden_indicator()
             self.is_game_over = True
             print("Game over")
-            return True
-        if self.game_state.you.hp <= 0:
-            self.hidden_indicator()
-            self.is_game_over = True
-            print("Game over")
+            self.quit_button.show()
             return True
         return False
 
@@ -204,9 +212,25 @@ class Game_Play:
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                self.socket.logout()
                 self.thread_game.stop()
                 pygame.quit()
                 exit()
+            self.manager.process_events(event)
+            if event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    if event.ui_element == self.quit_button:
+                        print("Back to home button pressed")
+                        self.running = False
+                        if self.game_state.me.hp <= 0:
+                            print("You lose")
+                            self.game_state.update_winner_loser(self.game_state.you.name, self.game_state.me.name, time.time())
+                        else:
+                            print("You win")
+                            self.game_state.update_winner_loser(self.game_state.me.name, self.game_state.you.name, time.time())
+                        self.update_history()
+                        self.show_home_page()
+                        break
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE and self.indicator_visible:
                     # Tính toán lực đánh dựa trên vị trí của indicator
@@ -229,16 +253,26 @@ class Game_Play:
             # if event.type == pygame.KEYDOWN:
             #     if event.key in KEY_ACTION_RIGHT_MAPPING and self.game_state.me.position == 'right':
             #         self.handle_right_attack(event, 5)
-
-    def update(self):
-        self.player_left_ins.update()
-        self.player_right_ins.update()
-
-        # update position indicator
+                        
+    def update_indicator_position(self):
+        # Cập nhật vị trí của indicator
         if self.indicator_moving:
             self.indicator_position += self.indicator_direction * self.indicator_speed
             if self.indicator_position > self.indicator_max or self.indicator_position < self.indicator_min:
                 self.indicator_direction *= -1
+
+    def update(self):
+        self.clock = pygame.time.Clock()
+        self.player_left_ins.update()
+        self.player_right_ins.update()
+
+        # update position indicator
+        self.update_indicator_position()
+
+        time_delta = self.clock.tick(60) / 1000.0
+        self.manager.update(time_delta)
+        self.manager.draw_ui(self.screen)
+        pygame.display.flip()
 
     def draw_line_slash(self, player, direction):
         slash = player.slash.sprite
@@ -249,12 +283,16 @@ class Game_Play:
         border_color = (255, 0, 0)
         pygame.draw.rect(self.screen, border_color, rect, 2)
 
+    def draw_background(self):
+        # Vẽ nền màn hình
+        background = pygame.transform.scale(self.background, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.screen.blit(background, (0, 0))
+
     def draw(self):
         # self.screen.fill((0, 0, 0))
 
         # Draw background fit to screen
-        background = pygame.transform.scale(self.background, (SCREEN_WIDTH, SCREEN_HEIGHT))
-        self.screen.blit(background, (0, 0))
+        self.draw_background()
 
         # load GAMEOVER_IMG png in center of window
         if self.is_game_over:
@@ -273,13 +311,6 @@ class Game_Play:
         indicator_y = 30  # Y-position for the indicator
         indicator_height = 10  # Height of the indicator
 
-        # Draw the indicator track with gradient effect
-        # track_color_start = (0, 128, 0)  # Green
-        # track_color_end = (255, 0, 0)  # Red
-        # for x in range(self.indicator_min, self.indicator_max, 2):  # Draw gradient track
-        #     interp = (x - self.indicator_min) / (self.indicator_max - self.indicator_min)
-        #     color = [interp * track_color_end[i] + (1 - interp) * track_color_start[i] for i in range(3)]
-        #     pygame.draw.line(self.screen, color, (x, indicator_y), (x, indicator_y + indicator_height), 2)
         if self.indicator_visible:
             # Draw the gradient track
             for start, end, level in self.DAMAGE_RANGES:
@@ -303,12 +334,6 @@ class Game_Play:
             self.screen.blit(font.render("Weak", True, (80, 80, 80)), (self.indicator_min, indicator_y - 20))
             self.screen.blit(font.render("Strong", True, (80, 80, 80)), (self.indicator_max - 50, indicator_y - 20))
 
-        # Draw the numbers for each player
-        # number_position_left = (self.player_left_ins.rect.x - 20 + self.player_left_ins.rect.width // 2, self.player_left_ins.rect.y + 20)
-        # number_position_right = (self.player_right_ins.rect.x - 20 + self.player_right_ins.rect.width // 2, self.player_right_ins.rect.y + 20)
-        # self.render_number(self.game_state.me.hp, number_position_left)  # Change "100" to whatever you want to display
-        # self.render_number(self.game_state.you.hp, number_position_right)  # Same here
-
         if self.game_state.me.position == 'left':
             right_hp = self.game_state.you.hp
             left_hp = self.game_state.me.hp
@@ -327,11 +352,8 @@ class Game_Play:
             self.player_right_ins.slash.draw(self.screen)
             # self.draw_line_slash(self.player_right_ins, 'right')
 
-        pygame.display.flip()
-        self.clock.tick(FPS)
 
     def check_collision(self):
-        print("check collision")
         if self.player_left_ins.slash:
             slash_hitbox = self.player_left_ins.slash.sprite.rect
             if self.player_right_ins.hitbox.colliderect(slash_hitbox):
@@ -359,8 +381,10 @@ class Game_Play:
                 self.damage = 0
 
     def run(self):
-        while True:
+        self.running = True
+        while self.running:
             self.handle_events()
             self.update()
             self.check_collision()
             self.draw()
+            self.clock.tick(FPS)

@@ -482,6 +482,7 @@ int get_history(char *username, char *history) {
         }
     }
 
+    printf("history in database: %s\n", history);
     // merge all information into a tring with format: id:username:password:status;id:username:password:status;...
     sqlite3_finalize(stmt);
     return count;

@@ -6,6 +6,8 @@ class PopUp:
         self.manager = manager
         self.screen_width, self.screen_height = screen_size  # Unpack screen dimensions
         popup_width, popup_height = 300, 200  # Define popup dimensions
+        self.accept_button = None
+        self.decline_button = None
 
         # Calculate center position for the popup
         center_x = (self.screen_width - popup_width) // 2

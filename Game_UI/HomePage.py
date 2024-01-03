@@ -1,6 +1,6 @@
 import random
 import threading
-import time
+import time as Time
 import pygame_gui
 import pygame
 from Player import Player
@@ -61,6 +61,8 @@ class HomePage:
         self.player_available = player_available
         self.screen = screen
         self.get_history = get_history
+        self.history_game = []
+        self.data_history = self.get_history()
 
         self.notification_thread = StoppableThread(self.socket.port_random, self.create_popup, self.socket_server)
         self.notification_thread.start()
@@ -68,7 +70,6 @@ class HomePage:
         self.avail = True
 
         self.create_home_page()
-        self.data_history = self.get_history()
         # self.socket.wait_invite()
 
     def create_popup(self, message):
@@ -142,7 +143,7 @@ class HomePage:
         )
 
     def create_history(self):
-        info_panel_rect = pygame.Rect(SCREEN_WIDTH - 300, 300, 250, 100)
+        info_panel_rect = pygame.Rect(SCREEN_WIDTH - 300, 300, 250, 300)
 
         # Create a panel to contain player information
         self.info_panel = pygame_gui.elements.UIPanel(
@@ -151,27 +152,96 @@ class HomePage:
             manager=self.manager
         )
 
-        # Create labels for player information
-        self.winner_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(10, 10, 180, 20),
-            text=f"Winner: Player 1",
+        # Create a scrolling container for historical data
+        scroll_container_rect = pygame.Rect(10, 10, 230, 280)
+        self.history_scroll_container = pygame_gui.elements.UIScrollingContainer(
+            relative_rect=scroll_container_rect,
             manager=self.manager,
             container=self.info_panel
         )
 
-        self.loser_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(10, 40, 180, 20),
-            text=f"Loser: Player 2",
-            manager=self.manager,
-            container=self.info_panel
-        )
+        print("===data_history===: ", self.data_history)
 
-        self.time_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(10, 70, 180, 20),
-            text=f"Time: 20:20:20",
-            manager=self.manager,
-            container=self.info_panel
-        )
+        # Format and split your historical data
+        if self.data_history == '' or self.data_history == 'NULL' or self.data_history is None:
+            return
+
+        data_history = self.data_history.split(';')
+        for index, data in enumerate(data_history):
+            if data != '':
+                history_data = data.split(':')
+
+                time = Time.strftime('%Y-%m-%d %H:%M:%S', Time.localtime(float(history_data[4])))
+                time_label = pygame_gui.elements.UILabel(
+                    relative_rect=pygame.Rect(0, index * 45 + index * 10, 200, 20),  # Adjust width as needed
+                    text=f"Time: {time}",
+                    manager=self.manager,
+                    container=self.history_scroll_container
+                )
+
+                # Create labels for each historical entry
+                winner_label = pygame_gui.elements.UILabel(
+                    relative_rect=pygame.Rect(0, index * 45 + index * 10 + 15, 200, 20),  # Adjust width as needed
+                    text=f"Winner: {history_data[2]}",
+                    manager=self.manager,
+                    container=self.history_scroll_container
+                )
+
+                loser_label = pygame_gui.elements.UILabel(
+                    relative_rect=pygame.Rect(0, index * 45 + index * 10 + 30, 200, 20),  # Adjust width as needed
+                    text=f"Loser: {history_data[3]}",
+                    manager=self.manager,
+                    container=self.history_scroll_container
+                )
+
+                # Add the horizontal layout to the list of game layouts
+        # Calculate the total height needed for data_history
+        total_height = len(data_history) * 50
+
+        # Set the scrolling container's height to fit all entries
+        self.history_scroll_container.set_scrollable_area_dimensions((300, total_height))
+
+    # def create_history(self):
+    #     info_panel_rect = pygame.Rect(SCREEN_WIDTH - 300, 300, 250, 300)
+
+    #     # Create a panel to contain player information
+    #     self.info_panel = pygame_gui.elements.UIPanel(
+    #         relative_rect=info_panel_rect,
+    #         starting_height=1,
+    #         manager=self.manager
+    #     )
+
+    #     # format data_history: 1:admin_1:Machine10:admin_1:1704219469.5586808;2:admin_1:Machine10:admin_1:1704219658.4801276;
+    #     # convert time
+    #     time = Time.strftime('%Y-%m-%d %H:%M:%S', Time.localtime(float('1704219469.5586808')))
+    #     # split to auth data
+    #     data_history = self.data_history.split(';')
+    #     for data in data_history:
+    #         if data != '':
+    #             self.history_game.append(data.split(':'))
+
+
+    #     # Create labels for player information
+    #     self.winner_label = pygame_gui.elements.UILabel(
+    #         relative_rect=pygame.Rect(10, 10, 180, 20),
+    #         text=f"Winner: {self.history_game[0][2]}",
+    #         manager=self.manager,
+    #         container=self.info_panel
+    #     )
+
+    #     self.loser_label = pygame_gui.elements.UILabel(
+    #         relative_rect=pygame.Rect(10, 40, 180, 20),
+    #         text=f"Loser: {self.history_game[0][3]}",
+    #         manager=self.manager,
+    #         container=self.info_panel
+    #     )
+
+    #     self.time_label = pygame_gui.elements.UILabel(
+    #         relative_rect=pygame.Rect(10, 70, 200, 20),
+    #         text=f"Time: {time}",
+    #         manager=self.manager,
+    #         container=self.info_panel
+    #     )
 
     def create_buttons(self):
         # Example button: Start with Machine
