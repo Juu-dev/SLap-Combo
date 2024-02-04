@@ -83,7 +83,7 @@ class Game_Play:
 
         # connect to socket target
         if my_turn:
-            print("Connect to target")
+            print("Connect to ip: ", self.ip_target, self.port_target)
             self.thread_game.socket_server.connect_to_target(self.ip_target, self.port_target)
 
         pygame.init()

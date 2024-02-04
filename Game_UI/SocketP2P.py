@@ -4,6 +4,7 @@ from constant import *
 
 # IP_SERVER_LAN = "192.168.31.37" => my computer ip lan
 IP_SERVER_LAN = "127.0.0.1"
+# IP_SERVER_LAN = "10.70.19.103"
 
 class SocketServer:
     def __init__(self, port):

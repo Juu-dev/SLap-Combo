@@ -135,6 +135,7 @@ class PlayersListPage:
                             port_target = int(message.split(':')[2])
                             self.game_state.set_you(player['username'], 'right')
                             self.game_state.update_me('left')
+                            print("TARGET: ", ip_target, port_target)
                             self.show_game_play(self.socket.port_random, True, port_target, ip_target)
                         else:
                             print("Challenge failed")

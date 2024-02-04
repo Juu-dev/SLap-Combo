@@ -322,6 +322,7 @@ class HomePage:
 
                     self.game_state.set_you(self.notification_thread.socket_server.your_name, 'left')
                     self.game_state.update_me('right')
+                    print("TARGET: ", )
                     self.show_game_play(self.socket.port_random, False, self.notification_thread.socket_server.target_client_port)
 
 
